@@ -636,9 +636,9 @@ function UI:CreateWindow(Config)
         OnDestroy = Config.OnDestroy or function() end,
         Themes = VexUI.Themes,
         Size = Config.Size and UDim2.new(
-            0, math.clamp(Config.Size.X.Offset, 420, 900),
-            0, math.clamp(Config.Size.Y.Offset, 280, 700)
-        ) or UDim2.new(0, 780, 0, 540),
+            0, math.clamp(Config.Size.X.Offset, 840, 1000),
+            0, math.clamp(Config.Size.Y.Offset, 560, 740)
+        ) or UDim2.new(0, 840, 0, 560),
         SideBarWidth = Config.SideBarWidth or 176,
         TransparencyNum = math.clamp(Config.TransparencyNum or (Config.Transparent and 0.1 or 0), 0, 1),
         User = Config.User or {},
@@ -1134,6 +1134,26 @@ function UI:CreateWindow(Config)
         TextTruncate = Enum.TextTruncate.AtEnd,
         ZIndex = 200, ThemeID = { TextColor3 = "Text" },
     })
+    -- An inset monogram gives the header a signature without competing with its title.
+    local HeaderMark = VexUI:Create("Frame", {
+        Name = "HeaderMark", Parent = Main,
+        Position = UDim2.new(0, 22, 0, 15),
+        Size = UDim2.new(0, 22, 0, 22),
+        BackgroundTransparency = 1, ZIndex = 200,
+    })
+    for _, segment in ipairs({
+        { 2, 3, 3, 16, -24 },
+        { 10, 3, 3, 16, 24 },
+        { 17, 3, 3, 7, 24 },
+    }) do
+        VexUI:Create("Frame", {
+            Parent = HeaderMark,
+            Position = UDim2.new(0, segment[1], 0, segment[2]),
+            Size = UDim2.new(0, segment[3], 0, segment[4]),
+            Rotation = segment[5], BackgroundTransparency = 0.12,
+            ZIndex = 201, ThemeID = {BackgroundColor3 = "Accent"},
+        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
+    end
     VexUI:Create("Frame", {
         Name = "HeaderRule", Parent = Main,
         Position = UDim2.new(0, 16, 0, Window.Topbar.Height + 7),
@@ -2367,13 +2387,17 @@ function UI:CreateWindow(Config)
 
     local LeftScroll = VexUI:Create("ScrollingFrame", {
         Parent = TabFrame,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        ScrollingEnabled = true,
+        ElasticBehavior = Enum.ElasticBehavior.WhenScrollable,
         Active = true,
         BackgroundColor3 = Color3.fromRGB(255, 255, 255),
         BackgroundTransparency = 1,
         BorderColor3 = Color3.fromRGB(0, 0, 0),
         BorderSizePixel = 0,
         Position = UDim2.new(0, 0, 0, 8),
-        Size = UDim2.new(1, 0, 1, -50),
+        Size = UDim2.new(1, 0, 1, UserFrame.Visible and -58 or -16),
         ScrollBarThickness = 0
     },{
         VexUI:Create("UIListLayout", {
@@ -2383,12 +2407,11 @@ function UI:CreateWindow(Config)
         VexUI:Create("UIPadding", {
             PaddingLeft = UDim.new(0, 5),
             PaddingRight = UDim.new(0, 5),
+            PaddingBottom = UDim.new(0, 20),
             --PaddingTop = UDim.new(0, 10),
         })
     })
-    LeftScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        LeftScroll.CanvasSize = UDim2.new(0, LeftScroll.UIListLayout.AbsoluteContentSize.X, 0, LeftScroll.UIListLayout.AbsoluteContentSize.Y)
-    end)
+    
 
     VexUI:Create("Frame", {
         Name = "SidebarRule", Parent = TabFrame,
@@ -2548,6 +2571,11 @@ function UI:CreateWindow(Config)
         })
         local RightScroll = VexUI:Create("ScrollingFrame", {
             Parent = ElementFrame,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        ScrollingEnabled = true,
+        ElasticBehavior = Enum.ElasticBehavior.WhenScrollable,
+            Active = true,
             BackgroundTransparency = 1,
             BorderColor3 = Color3.fromRGB(0, 0, 0),
             CanvasSize = UDim2.new(0,0,0,0),
@@ -2564,14 +2592,12 @@ function UI:CreateWindow(Config)
             }),
             VexUI:Create("UIPadding", {
                 --PaddingTop = UDim.new(0,5),
-                PaddingBottom = UDim.new(0,5),
+                PaddingBottom = UDim.new(0,20),
                 PaddingLeft = UDim.new(0,12)
             })
         })
 
-        RightScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            RightScroll.CanvasSize = UDim2.new(0, RightScroll.UIListLayout.AbsoluteContentSize.X, 0, RightScroll.UIListLayout.AbsoluteContentSize.Y)
-        end)
+        
        local function SelectTab()
             for i, v in next, ElementFolder:GetChildren() do
                 if v:IsA("GuiObject") then
@@ -4115,7 +4141,7 @@ function UI:CreateWindow(Config)
             Utility:TweenObject(UserSub, {TextTransparency = Value and 0.6 or 1}, 0.2)
             Utility:TweenObject(UserFrame.ImageLabel, {ImageTransparency = Value and 0 or 1,BackgroundTransparency = Value and 0 or 1}, 0.2)
             UserFrame.Visible = Value
-            LeftScroll.Size = UDim2.new(0, Window.SideBarWidth, 1, Value and -50 or -20)
+            LeftScroll.Size = UDim2.new(0, Window.SideBarWidth, 1, Value and -58 or -16)
         end
         function Window:Anonymous(Value)
             UserTitle.Text = Value and "Anonymous" or game.Players.LocalPlayer.DisplayName
@@ -4352,7 +4378,7 @@ function UI:CreateWindow(Config)
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         RestoreTransparency(0.2)
         --Utility:TweenObject(TabFrame.Frame, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        Utility:TweenObject(LeftScroll, {Size = UDim2.new(0, Window.SideBarWidth, 1, UserFrame.Visible and -50 or -20)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        Utility:TweenObject(LeftScroll, {Size = UDim2.new(0, Window.SideBarWidth, 1, UserFrame.Visible and -58 or -16)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
         Main.Frame.Visible = true
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
@@ -4516,26 +4542,35 @@ function UI:CreateWindow(Config)
         return Window
     end
 
-    if Window.AutoScale then
-        local Camera = workspace.CurrentCamera
-
-        local AvailableWidth = Camera.ViewportSize.X - (40 * 2)
-        local AvailableHeight = Camera.ViewportSize.Y - (40 * 2)
-
-        local ScaleX = AvailableWidth / Window.Size.X.Offset
-        local ScaleY = AvailableHeight / Window.Size.Y.Offset
-
-        local MinScale = 0.3
-        local MaxScale = 1.0
-
-        Window:SetUIScale(math.clamp(math.min(ScaleX, ScaleY), MinScale, MaxScale))
+    local function FitViewport()
+        if not Window.AutoScale or not workspace.CurrentCamera then return end
+        local viewport = workspace.CurrentCamera.ViewportSize
+        if viewport.X <= 0 or viewport.Y <= 0 then return end
+        local margin = UserInputService.TouchEnabled and 12 or 24
+        Main.UIScale.Scale = math.max(0.05, math.min(1,
+            (viewport.X - margin * 2) / Window.Size.X.Offset,
+            (viewport.Y - margin * 2) / Window.Size.Y.Offset))
     end
+    local viewportConnection
+    local function WatchViewport()
+        if viewportConnection then viewportConnection:Disconnect() end
+        local camera = workspace.CurrentCamera
+        if camera then viewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(FitViewport) end
+        FitViewport()
+    end
+    local cameraConnection = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(WatchViewport)
+    WatchViewport()
+    Main.Destroying:Once(function()
+        if viewportConnection then viewportConnection:Disconnect() end
+        cameraConnection:Disconnect()
+    end)
 
     function Window:Resize(sizeX, sizeY)
-        sizeX = math.clamp(sizeX, 410, 900)
-        sizeY = math.clamp(sizeY, 280, 700)
+        sizeX = math.clamp(sizeX, 420, 1000)
+        sizeY = math.clamp(sizeY, 280, 740)
         local TagFrame = Main:FindFirstChild("TagFrame")
         Window.Size = UDim2.new(0, sizeX, 0, sizeY)
+        FitViewport()
 
         Utility:TweenObject(Main, {Size = UDim2.new(0, sizeX, 0, sizeY)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, sizeX, 0, sizeY - 8)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
