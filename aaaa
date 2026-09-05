@@ -638,7 +638,7 @@ function UI:CreateWindow(Config)
         Size = Config.Size and UDim2.new(
             0, math.clamp(Config.Size.X.Offset, 420, 900),
             0, math.clamp(Config.Size.Y.Offset, 280, 700)
-        ) or UDim2.new(0, 760, 0, 525),
+        ) or UDim2.new(0, 780, 0, 540),
         SideBarWidth = Config.SideBarWidth or 176,
         TransparencyNum = math.clamp(Config.TransparencyNum or (Config.Transparent and 0.1 or 0), 0, 1),
         User = Config.User or {},
@@ -1145,26 +1145,10 @@ function UI:CreateWindow(Config)
         Name = "HeaderAccent", Parent = Main,
         AnchorPoint = Vector2.new(0.5, 0),
         Position = UDim2.new(0.5, 0, 0, Window.Topbar.Height + 7),
-        Size = UDim2.new(0, 44, 0, 2),
+        Size = UDim2.new(0, 64, 0, 2),
         BackgroundTransparency = 0.2, ZIndex = 200,
         ThemeID = {BackgroundColor3 = "Accent"},
     }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
-    -- A short index beneath the title follows the selected navigation tab.
-    local headerMotion
-    local function MoveHeaderIndex(index)
-        if headerMotion then headerMotion:Cancel() end
-        local count = math.max(1, #Window.TabList)
-        local offset = count > 1 and ((index - 1) / (count - 1) - 0.5) * 96 or 0
-        headerMotion = TweenService:Create(HeaderAccent,
-            TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Position = UDim2.new(0.5, offset, 0, Window.Topbar.Height + 7),
-                Size = UDim2.new(0, count > 1 and 24 or 44, 0, 2),
-            })
-        headerMotion:Play()
-    end
-    Main.Destroying:Once(function()
-        if headerMotion then headerMotion:Cancel() end
-    end)
     local function HeaderButton(name, icon, offset, callback)
         local button = VexUI:Create("ImageButton", {
             Name = name, Parent = Main, Image = "",
@@ -2588,9 +2572,7 @@ function UI:CreateWindow(Config)
         RightScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             RightScroll.CanvasSize = UDim2.new(0, RightScroll.UIListLayout.AbsoluteContentSize.X, 0, RightScroll.UIListLayout.AbsoluteContentSize.Y)
         end)
-        local navigationIndex = #Window.TabList + 1
        local function SelectTab()
-            MoveHeaderIndex(navigationIndex)
             for i, v in next, ElementFolder:GetChildren() do
                 if v:IsA("GuiObject") then
                     v.Visible = false
