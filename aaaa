@@ -653,7 +653,9 @@ function UI:CreateWindow(Config)
         Size = Config.Size and UDim2.new(
             0, math.clamp(Config.Size.X.Offset, 420, 1000),
             0, math.clamp(Config.Size.Y.Offset, 280, 740)
-        ) or UDim2.new(0, 740, 0, 510),
+        ) or (UserInputService.TouchEnabled
+            and UDim2.new(0, 740, 0, 510)
+            or UDim2.new(0, 800, 0, 550)),
         SideBarWidth = Config.SideBarWidth or 176,
         TransparencyNum = math.clamp(Config.TransparencyNum or (Config.Transparent and 0.1 or 0), 0, 1),
         User = Config.User or {},
