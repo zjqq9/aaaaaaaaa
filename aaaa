@@ -638,7 +638,7 @@ function UI:CreateWindow(Config)
         Size = Config.Size and UDim2.new(
             0, math.clamp(Config.Size.X.Offset, 420, 900),
             0, math.clamp(Config.Size.Y.Offset, 280, 700)
-        ) or UDim2.new(0, 740, 0, 510),
+        ) or UDim2.new(0, 760, 0, 525),
         SideBarWidth = Config.SideBarWidth or 176,
         TransparencyNum = Config.TransparencyNum or 0,
         User = Config.User or {},
@@ -2831,7 +2831,7 @@ function UI:CreateWindow(Config)
             local Button = {
                 Title = Config.Title or "Button",
                 Desc = Config.Desc,
-                Icon = Config.Icon or "mouse-pointer-click",
+                Icon = Config.Icon or "arrow-up-right",
                 Locked = Config.Locked,
                 SizeY = Config.SizeY or 40,
                 Callback = Config.Callback or function() end
@@ -2854,10 +2854,10 @@ function UI:CreateWindow(Config)
                     Image = GetIcon(Button.Icon),
                     BackgroundTransparency = 1,
                     Position = UDim2.new(.96, 0, 0.5, 0),
-                    Size = UDim2.new(0, 20, 0, 20),
+                    Size = UDim2.new(0, 16, 0, 16),
                     ZIndex = 16,
                     Parent = ButtonFrame,
-                    ThemeID = { ImageColor3 = "Button.Text|Text"}
+                    ThemeID = { ImageColor3 = "Button.IconColor|Muted"}
                 })
             end
 
@@ -2900,7 +2900,7 @@ function UI:CreateWindow(Config)
                 Utility:TweenObject(ButtonFrame, {BackgroundTransparency = 0.5}, 0.1)
             end)
 
-            Utility:Search(Window, {Title = Button.Title, Desc = Button.Desc, Icon = "mouse-pointer-click",Type = "Button", TabTitle = Tab.Title, SelectFn = SelectTab, Frame = Beeee, RightScroll = RightScroll,})
+            Utility:Search(Window, {Title = Button.Title, Desc = Button.Desc, Icon = "arrow-up-right",Type = "Button", TabTitle = Tab.Title, SelectFn = SelectTab, Frame = Beeee, RightScroll = RightScroll,})
             return Button
         end
 
@@ -2908,7 +2908,7 @@ function UI:CreateWindow(Config)
             local Togglee = {
                 Title = Config.Title or "Toggle",
                 Desc = Config.Desc,
-                Icon = Config.Icon or "mouse-pointer-click",
+                Icon = Config.Icon or "toggle-left",
                 Default = Config.Default or false,
                 SizeY = Config.SizeY or 40,
                 Locked = Config.Locked,
@@ -2986,42 +2986,45 @@ function UI:CreateWindow(Config)
             end
 
             local Val = Togglee.Default
+            local knobTween
+
+            local function RenderToggle(animate)
+                if knobTween then knobTween:Cancel() end
+                VexUI:AddThemeObject(ToggleV, {
+                    BackgroundColor3 = Val and "Toggle.Active|Accent" or "Toggle.Placeholder|Placeholder"
+                })
+                ToggleV.BackgroundTransparency = Val and 0.12 or 0
+                local properties = {
+                    Position = UDim2.new(0, Val and 33 or 18, 0.5, 0),
+                    BackgroundTransparency = Val and 0 or 0.55,
+                    Size = UDim2.new(0, 15, 0, 15),
+                }
+                if animate then
+                    knobTween = TweenService:Create(ToggleV.Frame,
+                        TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), properties)
+                    knobTween:Play()
+                else
+                    for key, value in pairs(properties) do ToggleV.Frame[key] = value end
+                end
+            end
 
             function Togglee:SetValue(newValue)
-                Val = newValue
-                VexUI:AddThemeObject(ToggleV, {BackgroundColor3 = newValue and "Toggle.Active|Accent" or "Toggle.Placeholder|Placeholder"})
-                ToggleV.BackgroundTransparency = newValue and 0.12 or 0
-                if newValue then
-                    Utility:TweenObject(ToggleV.Frame, {Position = UDim2.new(0, 33, 0.5, 0),BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-                else
-                    Utility:TweenObject(ToggleV.Frame, {Position = UDim2.new(0, 18,0.5, 0),BackgroundTransparency = 0.8}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-                end
-                    
-                spawn(function()
-                    pcall(Togglee.Callback, Val)
-                end)
+                Val = not not newValue
+                RenderToggle(true)
+                local callbackValue = Val
+                task.spawn(function() pcall(Togglee.Callback, callbackValue) end)
                 return Togglee
             end
 
-            Togglee:SetValue(Val)
-            ToggleTRG.MouseButton1Down:Connect(function()
-                Utility:TweenObject(ToggleV.Frame, {Size = UDim2.new(0, 15, 0, 8),BackgroundTransparency = (Val and 0 or 0.8)}, 0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-            end)
-            ToggleTRG.MouseButton1Up:Connect(function()
-                Utility:TweenObject(ToggleV.Frame, {Size = UDim2.new(0, 15, 0, 15),BackgroundTransparency = (Val and 0 or 0.8)}, 0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-            end)
-            ToggleTRG.MouseLeave:Connect(function()
-                Utility:TweenObject(ToggleV.Frame, {Size = UDim2.new(0, 15, 0, 15),BackgroundTransparency = (Val and 0 or 0.8)}, 0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-            end)
-            ToggleTRG.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.Touch then
-                    Utility:TweenObject(ToggleV.Frame, {Size = UDim2.new(0, 15, 0, 15),BackgroundTransparency = (Val and 0 or 0.8)}, 0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-                end
-            end)
-            ToggleTRG.MouseButton1Click:Connect(function()
+            RenderToggle(false)
+            local initialValue = Val
+            task.spawn(function() pcall(Togglee.Callback, initialValue) end)
+            ToggleTRG.Activated:Connect(function()
                 if Togglee.Locked then return end
-                Val = not Val
-                Togglee:SetValue(Val)
+                Togglee:SetValue(not Val)
+            end)
+            Beeee.Destroying:Once(function()
+                if knobTween then knobTween:Cancel() end
             end)
             Utility:Search(Window, {Title = Togglee.Title, Desc = Togglee.Desc, Icon = "toggle-left",Type = "Toggle", TabTitle = Tab.Title, SelectFn = SelectTab, Frame = Beeee, RightScroll = RightScroll,})
             return Togglee
