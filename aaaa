@@ -640,7 +640,7 @@ function UI:CreateWindow(Config)
             0, math.clamp(Config.Size.Y.Offset, 280, 700)
         ) or UDim2.new(0, 760, 0, 525),
         SideBarWidth = Config.SideBarWidth or 176,
-        TransparencyNum = Config.TransparencyNum or 0,
+        TransparencyNum = math.clamp(Config.TransparencyNum or (Config.Transparent and 0.1 or 0), 0, 1),
         User = Config.User or {},
         Tabs = {},
         AllElements = {},
@@ -1086,7 +1086,7 @@ function UI:CreateWindow(Config)
         BorderColor3 = Color3.new(0, 0, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0.5, 0),
-        BackgroundTransparency = (Window.Transparent and 0.1 or 0),
+        BackgroundTransparency = Window.TransparencyNum,
         BorderSizePixel = 0,
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         Parent = UIScreen,
@@ -1141,7 +1141,7 @@ function UI:CreateWindow(Config)
         ZIndex = 199, BackgroundTransparency = 0.55,
         ThemeID = { BackgroundColor3 = "Outline" },
     })
-    VexUI:Create("Frame", {
+    local HeaderAccent = VexUI:Create("Frame", {
         Name = "HeaderAccent", Parent = Main,
         AnchorPoint = Vector2.new(0.5, 0),
         Position = UDim2.new(0.5, 0, 0, Window.Topbar.Height + 7),
@@ -1149,6 +1149,22 @@ function UI:CreateWindow(Config)
         BackgroundTransparency = 0.2, ZIndex = 200,
         ThemeID = {BackgroundColor3 = "Accent"},
     }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
+    -- A short index beneath the title follows the selected navigation tab.
+    local headerMotion
+    local function MoveHeaderIndex(index)
+        if headerMotion then headerMotion:Cancel() end
+        local count = math.max(1, #Window.TabList)
+        local offset = count > 1 and ((index - 1) / (count - 1) - 0.5) * 96 or 0
+        headerMotion = TweenService:Create(HeaderAccent,
+            TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, offset, 0, Window.Topbar.Height + 7),
+                Size = UDim2.new(0, count > 1 and 24 or 44, 0, 2),
+            })
+        headerMotion:Play()
+    end
+    Main.Destroying:Once(function()
+        if headerMotion then headerMotion:Cancel() end
+    end)
     local function HeaderButton(name, icon, offset, callback)
         local button = VexUI:Create("ImageButton", {
             Name = name, Parent = Main, Image = "",
@@ -2233,7 +2249,7 @@ function UI:CreateWindow(Config)
         Position = UDim2.new(0, 0, 0, Window.Topbar.Height+13),
         BorderSizePixel = 0,
         ZIndex = 3,
-        BackgroundTransparency = (Window.Transparent and 1 or 0),
+        BackgroundTransparency = ((Window.Transparent or Window.TransparencyNum > 0) and 1 or 0),
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         Parent = Main,
         ThemeID = {
@@ -2244,7 +2260,7 @@ function UI:CreateWindow(Config)
             AnchorPoint = Vector2.new(0, 0),
             Position = UDim2.new(0, 0, 0, 0),
             BorderColor3 = Color3.new(0, 0, 0),
-            BackgroundTransparency = (Window.Transparent and 1 or 0),
+            BackgroundTransparency = ((Window.Transparent or Window.TransparencyNum > 0) and 1 or 0),
             Size = UDim2.new(0, 16, 0, 16),
             BackgroundColor3 = Color3.fromRGB(0, 0, 0),
             BorderSizePixel = 0,
@@ -2256,7 +2272,7 @@ function UI:CreateWindow(Config)
         VexUI:Create("Frame", {
             AnchorPoint = Vector2.new(1, 1),
             Position = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = (Window.Transparent and 1 or 0),
+            BackgroundTransparency = ((Window.Transparent or Window.TransparencyNum > 0) and 1 or 0),
             BorderColor3 = Color3.new(0, 0, 0),
             Size = UDim2.new(0, 16, 0, 16),
             BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -2572,7 +2588,9 @@ function UI:CreateWindow(Config)
         RightScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             RightScroll.CanvasSize = UDim2.new(0, RightScroll.UIListLayout.AbsoluteContentSize.X, 0, RightScroll.UIListLayout.AbsoluteContentSize.Y)
         end)
+        local navigationIndex = #Window.TabList + 1
        local function SelectTab()
+            MoveHeaderIndex(navigationIndex)
             for i, v in next, ElementFolder:GetChildren() do
                 if v:IsA("GuiObject") then
                     v.Visible = false
@@ -4327,7 +4345,21 @@ function UI:CreateWindow(Config)
     })
     enableDragging(MobileBtn)
 
+    local visibilityRevision = 0
+    local function RestoreTransparency(duration)
+        Utility:TweenObject(Main, {BackgroundTransparency = Window.TransparencyNum}, duration)
+        local sidebarAlpha = (Window.Transparent or Window.TransparencyNum > 0) and 1 or 0
+        Utility:TweenObject(TabFrame, {BackgroundTransparency = sidebarAlpha}, duration)
+        for _, child in ipairs(TabFrame:GetChildren()) do
+            if child:IsA("Frame") and child.Size == UDim2.new(0, 16, 0, 16) then
+                child.BackgroundTransparency = sidebarAlpha
+            end
+        end
+    end
+
     function Window:Open()
+        visibilityRevision += 1
+        local revision = visibilityRevision
         Island.Visible = false
         Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.2, 0)}, 0.3)
 
@@ -4336,13 +4368,13 @@ function UI:CreateWindow(Config)
         MobileBtn.Visible = false
         Window.Default = "Default"
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        Utility:TweenObject(TabFrame, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        RestoreTransparency(0.2)
         --Utility:TweenObject(TabFrame.Frame, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(LeftScroll, {Size = UDim2.new(0, Window.SideBarWidth, 1, UserFrame.Visible and -50 or -20)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
         Main.Frame.Visible = true
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
-        Utility:TweenObject(Main, {BackgroundTransparency = 0}, 0.2, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+        -- RestoreTransparency uses the saved appearance, not the minimized alpha.
 
         if UI.Notifications == 0 then
             Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.2, 0)}, 0.3)
@@ -4353,9 +4385,12 @@ function UI:CreateWindow(Config)
                 Utility:TweenObject(MinzUI, {Size = UDim2.new(0, MinzUI.UIListLayout.AbsoluteContentSize.X + 10, 0, 30)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         end)
         task.wait(0.25)
+        if revision ~= visibilityRevision then return end
         MinzUI.Visible = false
     end
     function Window:Close()
+        visibilityRevision += 1
+        local revision = visibilityRevision
         Island.Visible = false
         Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3)
 
@@ -4377,6 +4412,7 @@ function UI:CreateWindow(Config)
             Utility:TweenObject(MinzUI, {Size = UDim2.new(0, MinzUI.UIListLayout.AbsoluteContentSize.X + 10, 0, 30)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         end)
         task.wait(0.3)
+        if revision ~= visibilityRevision then return end
         Main.Visible = false
         
         local isTouch = UserInputService.TouchEnabled
@@ -4470,21 +4506,19 @@ function UI:CreateWindow(Config)
 
     function Window:SetTransparency(Value)
         if typeof(Value) == "boolean" then
-            Utility:TweenObject(Main, { Transparency = Value and 0.1 or 0}, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-            Utility:TweenObject(TabFrame, { Transparency = tabTransparency }, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-            Utility:TweenObject(TabFrame.Frame, { Transparency = tabTransparency }, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        elseif typeof(Value) == "number" then
-            Utility:TweenObject(Main, { Transparency = Value}, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-            Utility:TweenObject(TabFrame, { Transparency = tabTransparency }, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-            Utility:TweenObject(TabFrame.Frame, { Transparency = tabTransparency }, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+            Window.Transparent = Value
+            Window.TransparencyNum = Value and 0.1 or 0
+        elseif typeof(Value) == "number" and Value == Value then
+            Window.TransparencyNum = math.clamp(Value, 0, 1)
+            Window.Transparent = Window.TransparencyNum > 0
         else
             return Window
         end
-        Window.TransparencyNum = Main.BackgroundTransparency
+        if Window.IslandOpen then RestoreTransparency(0.1) end
         return Window
     end
     function Window:GetTransparency()
-        return Main.Transparency
+        return Window.TransparencyNum
     end
 
     function Window:GetTheme()
