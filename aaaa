@@ -546,7 +546,18 @@ function Text(parent, text, textProps, children)
             end
         end
 
-        newText = (newText or ""):gsub("\n", "\\n")
+        newText = tostring(newText or "")
+        -- Ordinary copy uses one native label so Roblox lays out complete words.
+        -- Only inline-icon content needs the segmented row renderer below.
+        if not newText:find("<[%w_%-]+>") then
+            local label = CreateText(newText:gsub("\\n", "\n"), 1, container)
+            if container.Size.X.Scale > 0 then
+                label.AutomaticSize = Enum.AutomaticSize.Y
+                label.Size = UDim2.new(1, 0, 0, textProps.TextSize or 13)
+            end
+            return
+        end
+        newText = newText:gsub("\n", "\\n")
 
         for lineIndex, line in ipairs(string.split(newText, "\\n")) do
             local row = VexUI:Create("Frame", {
@@ -2589,7 +2600,7 @@ function UI:CreateWindow(Config)
                     end
                 end
             end
-            Utility:TweenObject(TabBack, {BackgroundTransparency = 0}, 0.18)
+            Utility:TweenObject(TabBack, {BackgroundTransparency = 1}, 0.18)
             Utility:TweenObject(ActiveRail, {BackgroundTransparency = 0}, 0.18)
             Utility:TweenObject(TabBack.UIStroke, {Transparency = 1}, 0.2)
             Utility:TweenObject(TabTitle, {TextTransparency = 0}, 0.2)
