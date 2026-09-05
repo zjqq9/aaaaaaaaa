@@ -117,9 +117,24 @@ VexUI.Themes = {
     },
 }
 
+-- Curated palettes; preview swatches use these same live theme colors.
+local function Palette(name, background, surface, text, accent)
+    local bg, card, fg = Color3.fromHex(background), Color3.fromHex(surface), Color3.fromHex(text)
+    VexUI.Themes[name] = {
+        Name = name, Background = bg, SideBar = bg, ElementColor = card,
+        Text = fg, IconColor = fg, Accent = Color3.fromHex(accent),
+        Outline = card:Lerp(fg, 0.16), Placeholder = bg:Lerp(Color3.new(0, 0, 0), 0.2),
+    }
+end
+Palette("Midnight", "0d0e11", "191b20", "e6e7eb", "a6acbc")
+Palette("Mocha", "1e1e2e", "313244", "cdd6f4", "cba6f7")
+Palette("Tokyo", "1a1b26", "24283b", "c0caf5", "7aa2f7")
+Palette("Rose", "191724", "26233a", "e0def4", "ebbcba")
+Palette("Paper", "f4f1eb", "e8e3da", "35332f", "946b45")
+
 -- Semantic colors keep custom themes compatible with the component palette.
 for name, theme in pairs(VexUI.Themes) do
-    theme.Accent = ({
+    theme.Accent = theme.Accent or ({
         Dark = Color3.fromRGB(177, 195, 220),
         Light = Color3.fromRGB(20, 116, 92),
         Forest = Color3.fromRGB(158, 207, 139),
@@ -1767,8 +1782,8 @@ function UI:CreateWindow(Config)
                 Name = "TagFrame",
                 Parent = Main,
                 AnchorPoint = Vector2.new(1, 1),
-                Position = UDim2.new(1, -8, 1, -72),
-                Size = UDim2.new(0, Window.Size.X.Offset-16, 0, 35),
+                Position = UDim2.new(1, -8, 1, -5),
+                Size = UDim2.new(0, Window.Size.X.Offset-Window.SideBarWidth-8, 0, 35),
                 ClipsDescendants = true,
                 Active = true,
                 ZIndex = 200,
@@ -2226,23 +2241,23 @@ function UI:CreateWindow(Config)
     end)
 
     local TabFrame = VexUI:Create("Frame", {
-        Name = "BottomNavigation", Parent = Main,
-        AnchorPoint = Vector2.new(0, 1),
-        Position = UDim2.new(0, 8, 1, -8),
-        Size = UDim2.new(1, -16, 0, 60),
+        Name = "Sidebar", Parent = Main,
+        AnchorPoint = Vector2.new(0, 0),
+        Position = UDim2.new(0, 0, 0, Window.Topbar.Height + 13),
+        Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13),
         ClipsDescendants = true, ZIndex = 3,
         BackgroundTransparency = 1,
         ThemeID = {BackgroundColor3 = "SideBar"},
-    }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 10)})})
+    }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 16)})})
 
     --USER
     local UserFrame = VexUI:Create("Frame", {
         Parent = TabFrame,
-        AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -6, 0.5, 0),
+        AnchorPoint = Vector2.new(0.5, 1),
+        Position = UDim2.new(0.5, 0, 1, -12),
         BorderColor3 = Color3.new(0, 0, 0),
         ClipsDescendants = true,
-        Size = UDim2.new(0, 140, 0, 40),
+        Size = UDim2.new(0, Window.SideBarWidth - 20, 0, 40),
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         ZIndex = 10,
         ThemeID = {
@@ -2331,8 +2346,8 @@ function UI:CreateWindow(Config)
 
     local LeftScroll = VexUI:Create("ScrollingFrame", {
         Parent = TabFrame,
-        AutomaticCanvasSize = Enum.AutomaticSize.X,
-        ScrollingDirection = Enum.ScrollingDirection.X,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
         ScrollingEnabled = true,
         ElasticBehavior = Enum.ElasticBehavior.WhenScrollable,
         Active = true,
@@ -2340,29 +2355,29 @@ function UI:CreateWindow(Config)
         BackgroundTransparency = 1,
         BorderColor3 = Color3.fromRGB(0, 0, 0),
         BorderSizePixel = 0,
-        Position = UDim2.new(0, 4, 0, 8),
-        Size = UDim2.new(1, UserFrame.Visible and -154 or -8, 0, 44),
+        Position = UDim2.new(0, 0, 0, 8),
+        Size = UDim2.new(1, 0, 1, UserFrame.Visible and -64 or -16),
         ScrollBarThickness = 0
     },{
         VexUI:Create("UIListLayout", {
-            FillDirection = Enum.FillDirection.Horizontal,
-            VerticalAlignment = Enum.VerticalAlignment.Center,
+            FillDirection = Enum.FillDirection.Vertical,
+            VerticalAlignment = Enum.VerticalAlignment.Top,
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding = UDim.new(0, 7)
         }),
         VexUI:Create("UIPadding", {
             PaddingLeft = UDim.new(0, 5),
             PaddingRight = UDim.new(0, 5),
-            PaddingBottom = UDim.new(0, 0),
+            PaddingBottom = UDim.new(0, 20),
             --PaddingTop = UDim.new(0, 10),
         })
     })
     
 
     VexUI:Create("Frame", {
-        Name = "NavigationRule", Parent = TabFrame,
-        Position = UDim2.new(0, 8, 0, 0),
-        Size = UDim2.new(1, -16, 0, 1),
+        Name = "SidebarRule", Parent = TabFrame,
+        Position = UDim2.new(1, -1, 0, 10),
+        Size = UDim2.new(0, 1, 1, -24),
         BackgroundTransparency = 0.65, ZIndex = 5,
         ThemeID = {BackgroundColor3 = "Outline"},
     })
@@ -2393,7 +2408,7 @@ function UI:CreateWindow(Config)
             AutomaticSize = "None",
             BorderColor3 = Color3.new(0, 0, 0),
             BackgroundTransparency = Tab.Border and 0.6 or 1,
-            Size = UDim2.new(0, math.clamp(#Tab.Title * 7 + (Tab.Icon and 46 or 28), 92, 180), 0, 44),
+            Size = UDim2.new(0, Window.SideBarWidth - 10, 0, 44),
             BackgroundColor3 = Color3.fromRGB(0, 0, 0),
             BorderSizePixel = 0,
             ZIndex = 4,
@@ -2455,7 +2470,7 @@ function UI:CreateWindow(Config)
             TextWrapped = false,
             TextTruncate = Enum.TextTruncate.AtEnd,
             TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextXAlignment = Enum.TextXAlignment.Center,
+            TextXAlignment = Enum.TextXAlignment.Left,
             Visible = true,
             ThemeID = {
                 TextColor3 = "Tab.Text|Text"
@@ -2493,8 +2508,8 @@ function UI:CreateWindow(Config)
         
         local ActiveRail = VexUI:Create("Frame", {
             Name = "ActiveRail", Parent = TabBack,
-            Position = UDim2.new(0.5, -12, 1, -2),
-            Size = UDim2.new(0, 24, 0, 2),
+            Position = UDim2.new(0, 0, 0.5, -8),
+            Size = UDim2.new(0, 2, 0, 16),
             BackgroundTransparency = 1, ZIndex = 7,
             ThemeID = { BackgroundColor3 = "Accent" },
         }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
@@ -2506,7 +2521,7 @@ function UI:CreateWindow(Config)
             BorderColor3 = Color3.new(0, 0, 0),
             ClipsDescendants = true,
             BackgroundTransparency = 1,
-            Size = UDim2.new(0, Window.Size.X.Offset-16, 0, 0),
+            Size = UDim2.new(0, Window.Size.X.Offset-Window.SideBarWidth-8, 0, 0),
             BackgroundColor3 = Color3.fromRGB(0, 0, 0),
             ZIndex = 4,
             ThemeID = {
@@ -2550,13 +2565,13 @@ function UI:CreateWindow(Config)
             for i, v in next, ElementFolder:GetChildren() do
                 if v:IsA("GuiObject") then
                     v.Visible = false
-                    v.Size = UDim2.new(0, Window.Size.X.Offset-16, 0, 0)
+                    v.Size = UDim2.new(0, Window.Size.X.Offset-Window.SideBarWidth-8, 0, 0)
                 end
             end
             ElementFrame.Visible = true
             RightScroll.Visible = true
             Window.ActiveElementFrame = ElementFrame
-            Utility:TweenObject(ElementFrame, {Size = UDim2.new(0, Window.Size.X.Offset-16, 0, Window.Size.Y.Offset - Window.Topbar.Height-88 - (Tags > 0 and 37 or 0))}, 0.15)
+            Utility:TweenObject(ElementFrame, {Size = UDim2.new(0, Window.Size.X.Offset-Window.SideBarWidth-8, 0, Window.Size.Y.Offset - Window.Topbar.Height-20 - (Tags > 0 and 37 or 0))}, 0.15)
             Utility:TweenObject(ElementFrame, {BackgroundTransparency = 1}, 0.2)
             for _, v in next, Window.Tabs do
                 Utility:TweenObject(v, {BackgroundTransparency = 1}, 0.2)
@@ -4089,7 +4104,7 @@ function UI:CreateWindow(Config)
             Utility:TweenObject(UserSub, {TextTransparency = Value and 0.6 or 1}, 0.2)
             Utility:TweenObject(UserFrame.ImageLabel, {ImageTransparency = Value and 0 or 1,BackgroundTransparency = Value and 0 or 1}, 0.2)
             UserFrame.Visible = Value
-            LeftScroll.Size = UDim2.new(1, Value and -154 or -8, 0, 44)
+            LeftScroll.Size = UDim2.new(1, 0, 1, Value and -64 or -16)
         end
         function Window:Anonymous(Value)
             UserTitle.Text = Value and "Anonymous" or game.Players.LocalPlayer.DisplayName
@@ -4156,12 +4171,12 @@ function UI:CreateWindow(Config)
     end
 
     function Window:Section(Config)
-        -- Section tabs stay adjacent in the horizontal navigation strip.
+        -- Keep section tabs grouped in the sidebar.
         local group = VexUI:Create("Frame", {
             Name = Config.Title or "Section", Parent = LeftScroll,
-            BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.X,
-            Size = UDim2.new(0, 0, 0, 44),
-        }, {Utility:ListLayout("H", 7)})
+            BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y,
+            Size = UDim2.new(1, 0, 0, 0),
+        }, {Utility:ListLayout("V", 7)})
         local Section = {}
         function Section:Tab(tabConfig)
             return Window:Tab(tabConfig, group)
@@ -4212,9 +4227,9 @@ function UI:CreateWindow(Config)
         Main.Visible = true
         MobileBtn.Visible = false
         Window.Default = "Default"
-        Utility:TweenObject(TabFrame, {Size = UDim2.new(1, -16, 0, 60)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         RestoreTransparency(0.2)
-        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, UserFrame.Visible and -154 or -8, 0, 44)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 1, UserFrame.Visible and -64 or -16)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
         Main.Frame.Visible = true
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
@@ -4240,9 +4255,9 @@ function UI:CreateWindow(Config)
 
         Window.IslandOpen = false
         Window.Default = "Minimize"
-        Utility:TweenObject(TabFrame, {Size = UDim2.new(1, -16, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, UserFrame.Visible and -154 or -8, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
         Main.Frame.Visible = false
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
@@ -4288,9 +4303,9 @@ function UI:CreateWindow(Config)
     WinElements.Cross.MouseButton1Click:connect(function()
         Window.IslandOpen = false
         spawn(function() pcall(Window.OnDestroy) end)
-        Utility:TweenObject(TabFrame, {Size = UDim2.new(1, -16, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, UserFrame.Visible and -154 or -8, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
         Main.Frame.Visible = false
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
@@ -4301,9 +4316,9 @@ function UI:CreateWindow(Config)
 
     function Window:Destroy()
         Window.IslandOpen = false
-        Utility:TweenObject(TabFrame, {Size = UDim2.new(1, -16, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, UserFrame.Visible and -154 or -8, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
         Main.Frame.Visible = false
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
@@ -4408,28 +4423,28 @@ function UI:CreateWindow(Config)
         Utility:TweenObject(Main, {Size = UDim2.new(0, sizeX, 0, sizeY)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, sizeX, 0, sizeY - 8)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(TopBarF1, {Size = UDim2.new(0, sizeX - 20 - TopBarF2.Size.X.Offset - 187, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        Utility:TweenObject(TabFrame, {Size = UDim2.new(1, -16, 0, 60)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         --Main.Size = UDim2.new(0, sizeX, 0, sizeY)
         --Main.Frame.Size = UDim2.new(0, sizeX, 0, sizeY - 8)
         --TopBarF1.Size = UDim2.new(0, sizeX - 20 - TopBarF2.Size.X.Offset - 187, 0, Window.Topbar.Height)
-        --TabFrame.Size = UDim2.new(1, -16, 0, 60)
+        --TabFrame.Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)
 
         for _, EF in ipairs(ElementFolder:GetChildren()) do
             if EF:IsA("Frame") then
-                EF.Size = UDim2.new(0, sizeX - 16, 0, (Window.ActiveElementFrame == EF) and sizeY - Window.Topbar.Height - 88 - (Tags > 0 and 37 or 0) or EF.Size.Y.Offset)
+                EF.Size = UDim2.new(0, sizeX - Window.SideBarWidth - 8, 0, (Window.ActiveElementFrame == EF) and sizeY - Window.Topbar.Height - 20 - (Tags > 0 and 37 or 0) or EF.Size.Y.Offset)
                 local Scroll = EF:FindFirstChildOfClass("ScrollingFrame")
                 if Scroll then
                     for _, item in ipairs(Scroll:GetChildren()) do
                         if item:IsA("Frame") then
-                            item.Size = UDim2.new(0, sizeX - 16 - 24, 0, item.Size.Y.Offset)
+                            item.Size = UDim2.new(0, sizeX - Window.SideBarWidth - 8 - 24, 0, item.Size.Y.Offset)
                         end
                     end
                 end
             end
         end
         if TagFrame then
-            TagFrame.Size = UDim2.new(0, sizeX - 16, 0, 35)
-            TagFrame.Position = UDim2.new(1, -8, 1, -72)
+            TagFrame.Size = UDim2.new(0, sizeX - Window.SideBarWidth - 8, 0, 35)
+            TagFrame.Position = UDim2.new(1, -8, 1, -5)
         end
     end
 
@@ -4506,6 +4521,71 @@ function UI:CreateWindow(Config)
         ResizeHandle.Visible = v
     end
     UI.Window = Window
+    -- Appearance opens from a small header control, without adding a navigation tab.
+    local appearance
+    local choices = {"Dark", "Midnight", "Mocha", "Tokyo", "Rose", "Paper"}
+    local function OpenAppearance()
+        if appearance then appearance:Destroy(); appearance = nil; return end
+        appearance = VexUI:Create("TextButton", {
+            Name = "Appearance", Parent = Main, Text = "", Active = true,
+            Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 0.08,
+            ZIndex = 1200, ThemeID = {BackgroundColor3 = "Background"},
+        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 16)})})
+        local overlay = appearance
+        VexUI:Create("TextLabel", {
+            Parent = overlay, Text = "Appearance", TextSize = 18,
+            Position = UDim2.new(0, 22, 0, 16), Size = UDim2.new(1, -80, 0, 26),
+            BackgroundTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 1201, ThemeID = {TextColor3 = "Text"},
+        })
+        local close = VexUI:Create("TextButton", {
+            Parent = overlay, Text = "Done", TextTransparency = 0,
+            Position = UDim2.new(1, -76, 0, 16), Size = UDim2.new(0, 54, 0, 28),
+            BackgroundTransparency = 1, ZIndex = 1202, ThemeID = {TextColor3 = "Accent"},
+        })
+        close.Activated:Connect(function() overlay:Destroy(); appearance = nil end)
+        local list = VexUI:Create("ScrollingFrame", {
+            Parent = overlay, Position = UDim2.new(0, 22, 0, 58),
+            Size = UDim2.new(1, -44, 1, -80), BackgroundTransparency = 1,
+            Active = true, AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            ScrollingDirection = Enum.ScrollingDirection.Y, ZIndex = 1201,
+        }, {VexUI:Create("UIGridLayout", {
+            CellSize = UDim2.new(0.5, -6, 0, 88), CellPadding = UDim2.new(0, 10, 0, 10),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+        }), Utility:Padding({bottom = 12})})
+        local labels = {}
+        for order, name in ipairs(choices) do
+            local palette = VexUI.Themes[name]
+            local card = VexUI:Create("TextButton", {
+                Parent = list, Text = "", LayoutOrder = order, ZIndex = 1202,
+                BackgroundColor3 = palette.ElementColor,
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 8)})})
+            local strip = VexUI:Create("Frame", {
+                Parent = card, Position = UDim2.new(0, 10, 0, 10),
+                Size = UDim2.new(1, -20, 0, 26), BackgroundTransparency = 1, ZIndex = 1203,
+                ClipsDescendants = true,
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 4)})})
+            for index, color in ipairs({palette.Background, palette.ElementColor, palette.Accent, palette.Text}) do
+                VexUI:Create("Frame", {Parent = strip, BackgroundColor3 = color,
+                    Position = UDim2.new((index - 1) / 4, 0, 0, 0),
+                    Size = UDim2.new(0.25, 0, 1, 0), ZIndex = 1204})
+            end
+            labels[name] = VexUI:Create("TextLabel", {
+                Parent = card, Text = name .. (Window.Theme == name and "  /  Selected" or ""),
+                Position = UDim2.new(0, 10, 0, 45), Size = UDim2.new(1, -20, 0, 30),
+                TextSize = 12, TextColor3 = palette.Text, BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 1203,
+            })
+            card.Activated:Connect(function()
+                Window:SetTheme(name)
+                for key, label in pairs(labels) do
+                    label.Text = key .. (key == name and "  /  Selected" or "")
+                end
+            end)
+        end
+    end
+    HeaderButton("AppearanceButton", "palette", -Window.Size.X.Offset + 16, OpenAppearance).Position = UDim2.new(0, 16, 0, 12)
+
     return Window
 end
 
