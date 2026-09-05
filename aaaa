@@ -638,7 +638,7 @@ function UI:CreateWindow(Config)
         Size = Config.Size and UDim2.new(
             0, math.clamp(Config.Size.X.Offset, 420, 900),
             0, math.clamp(Config.Size.Y.Offset, 280, 700)
-        ) or UDim2.new(0, 680, 0, 470),
+        ) or UDim2.new(0, 740, 0, 510),
         SideBarWidth = Config.SideBarWidth or 176,
         TransparencyNum = Config.TransparencyNum or 0,
         User = Config.User or {},
@@ -1127,10 +1127,10 @@ function UI:CreateWindow(Config)
         Name = "AeroTitle", Parent = Main,
         Text = Window.Name, TextSize = 15,
         Font = Enum.Font.GothamMedium,
-        Position = UDim2.new(0, 22, 0, 8),
-        Size = UDim2.new(1, -114, 0, 36),
+        Position = UDim2.new(0, 84, 0, 8),
+        Size = UDim2.new(1, -168, 0, 36),
         BackgroundTransparency = 1,
-        TextXAlignment = Enum.TextXAlignment.Left,
+        TextXAlignment = Enum.TextXAlignment.Center,
         TextTruncate = Enum.TextTruncate.AtEnd,
         ZIndex = 200, ThemeID = { TextColor3 = "Text" },
     })
@@ -1141,6 +1141,14 @@ function UI:CreateWindow(Config)
         ZIndex = 199, BackgroundTransparency = 0.55,
         ThemeID = { BackgroundColor3 = "Outline" },
     })
+    VexUI:Create("Frame", {
+        Name = "HeaderAccent", Parent = Main,
+        AnchorPoint = Vector2.new(0.5, 0),
+        Position = UDim2.new(0.5, 0, 0, Window.Topbar.Height + 7),
+        Size = UDim2.new(0, 44, 0, 2),
+        BackgroundTransparency = 0.2, ZIndex = 200,
+        ThemeID = {BackgroundColor3 = "Accent"},
+    }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
     local function HeaderButton(name, icon, offset, callback)
         local button = VexUI:Create("ImageButton", {
             Name = name, Parent = Main, Image = "",
@@ -3029,8 +3037,26 @@ function UI:CreateWindow(Config)
                 Locked = Config.Locked,
                 SizeY = Config.SizeY or 40,
             }
+            -- Never expose binary floating-point tails in the displayed value.
+            local function FormatValue(value)
+                local text = string.format("%.10f", value):gsub("0+$", ""):gsub("%.$", "")
+                return text == "-0" and "0" or text
+            end
+            local function NormalizeValue(value)
+                local minimum, maximum = Slider.Value.Min, Slider.Value.Max
+                local step = tonumber(Slider.Step) or 1
+                if step <= 0 or step ~= step or step == math.huge then step = 1 end
+                local clamped = math.clamp(value, minimum, maximum)
+                local snapped = math.round(clamped / step) * step
+                return tonumber(FormatValue(math.clamp(snapped, minimum, maximum)))
+            end
+            local function ValueRatio(value)
+                local span = Slider.Value.Max - Slider.Value.Min
+                return span > 0 and math.clamp((value - Slider.Value.Min) / span, 0, 1) or 0
+            end
             local Beeee, SliderElement, Inner = Utility:Element(RightScroll, ElementFrame, Slider.SizeY, "Slider")
-            local Title, Desc = Utility:ElText(Inner, Slider.Title, Slider.Desc, "Button")
+            Inner.Size = UDim2.new(1, -194, 1, 0)
+            local Title, Desc = Utility:ElText(Inner, Slider.Title, Slider.Desc, "Slider")
 
             local TextContainer = VexUI:Create("Frame", {
                 Parent = SliderElement,
@@ -3051,7 +3077,7 @@ function UI:CreateWindow(Config)
             local ValueFrame = VexUI:Create("Frame", {
                 Parent = SliderElement,
                 AnchorPoint = Vector2.new(0.96, 0.5),
-                Position = UDim2.new(0.96, -40, 0.5, 0),
+                Position = UDim2.new(0.96, -68, 0.5, 0),
                 ClipsDescendants = true,
                 BackgroundTransparency = 0.5,
                 Size = UDim2.new(0, 110, 0, 16),
@@ -3108,7 +3134,7 @@ function UI:CreateWindow(Config)
                 Position = UDim2.new(0.96, 0, 0.5, 0),
                 BackgroundColor3 = Color3.fromRGB(0, 0, 0),
                 BackgroundTransparency = 0.5,
-                Size = UDim2.new(0, 29, 0, 22),
+                Size = UDim2.new(0, 58, 0, 24),
                 ClipsDescendants = true,
                 BorderSizePixel = 0,
                 ZIndex = 15,
@@ -3156,7 +3182,7 @@ function UI:CreateWindow(Config)
                 BackgroundTransparency = 1,
                 ZIndex = 16,
                 Size = UDim2.new(1, 0, 1, 0),
-                Text = tostring(Slider.Value.Default or 0),
+                Text = FormatValue(NormalizeValue(Slider.Value.Default or Slider.Value.Min)),
                 TextColor3 = Color3.fromRGB(255, 255, 255),
                 FontFace = Font.new([[rbxassetid://12187365364]], Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
                 TextSize = 10,
@@ -3213,8 +3239,9 @@ function UI:CreateWindow(Config)
             local isTouch = false
             local isFocusing = false
 
-            local clampedDefault = math.clamp(Slider.Value.Default, Slider.Value.Min, Slider.Value.Max)
+            local clampedDefault = NormalizeValue(Slider.Value.Default or Slider.Value.Min)
             Value = clampedDefault
+            DropValue.Size = UDim2.new(ValueRatio(Value), 0, 1, 0)
 
             SliderTRG.InputBegan:Connect(function(input)
                 if Slider.Locked then return end
@@ -3238,20 +3265,20 @@ function UI:CreateWindow(Config)
                         end
 
                         local delta = math.clamp(
-                            (inputPosition - ValueFrame.AbsolutePosition.X) / ValueFrame.AbsoluteSize.X,
+                            (inputPosition - ValueFrame.AbsolutePosition.X) / math.max(1, ValueFrame.AbsoluteSize.X),
                             0, 1
                         )
-                        Value = math.floor(
-                            (Slider.Value.Min + delta * (Slider.Value.Max - Slider.Value.Min)) / Slider.Step + 0.5
-                        ) * Slider.Step
+                        local previousValue = Value
+                        Value = NormalizeValue(Slider.Value.Min + delta * (Slider.Value.Max - Slider.Value.Min))
+                        delta = ValueRatio(Value)
 
                         Utility:TweenObject(DropValue, { Size = UDim2.new(delta, 0, 1, 0) }, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
-                        BGBox.Text = tostring(Value)
-                        ScrollFrame:FindFirstChildOfClass("TextLabel").Text = tostring(Value)
+                        BGBox.Text = FormatValue(Value)
+                        ScrollFrame:FindFirstChildOfClass("TextLabel").Text = FormatValue(Value)
                         ScrollFrame.Position = UDim2.new(delta, 0, -1.5, -5)
 
-                        task.spawn(Slider.Callback, Value)
+                        if Value ~= previousValue then task.spawn(Slider.Callback, Value) end
                     end)
 
                     releaseconnection = game:GetService("UserInputService").InputEnded:Connect(function(endInput)
@@ -3273,11 +3300,11 @@ function UI:CreateWindow(Config)
             end)
 
             function Slider:SetValue(val)
-                local clamped = math.clamp(val, Slider.Value.Min, Slider.Value.Max)
-                local rounded = math.round(clamped / Slider.Step) * Slider.Step
+                local rounded = NormalizeValue(val)
                 Value = rounded
-                BGBox.Text = tostring(rounded)
-                Utility:TweenObject(DropValue, {Size = UDim2.new((rounded - Slider.Value.Min) / (Slider.Value.Max - Slider.Value.Min),0, 1, 0)}, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+                BGBox.Text = FormatValue(rounded)
+                ScrollFrame:FindFirstChildOfClass("TextLabel").Text = FormatValue(rounded)
+                Utility:TweenObject(DropValue, {Size = UDim2.new(ValueRatio(rounded),0, 1, 0)}, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
                 task.spawn(Slider.Callback, rounded)
             end
 
@@ -3292,7 +3319,8 @@ function UI:CreateWindow(Config)
                 Slider.Value.Min = val
             end
             function Slider:SetStep(val)
-                Slider.Value.Step = val
+                Slider.Step = val
+                self:SetValue(Value)
             end
             function Slider:Close()
                 Beeee:Destroy()
