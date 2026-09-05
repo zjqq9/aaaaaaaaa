@@ -2421,7 +2421,7 @@ function UI:CreateWindow(Config)
             AutomaticSize = "None",
             BorderColor3 = Color3.new(0, 0, 0),
             BackgroundTransparency = Tab.Border and 0.6 or 1,
-            Size = UDim2.new(0, Window.SideBarWidth - 10, 0, 44),
+            Size = UDim2.new(0, Window.SideBarWidth - 10, 0, UserInputService.TouchEnabled and 44 or 38),
             BackgroundColor3 = Color3.fromRGB(0, 0, 0),
             BorderSizePixel = 0,
             ZIndex = 4,
@@ -2474,7 +2474,7 @@ function UI:CreateWindow(Config)
             BorderSizePixel = 0,
             RichText = true,
             Size = UDim2.new(1, 0, 1, 0),
-            FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium, Enum.FontStyle.Normal),
             Text = Tab.Title,
             AutomaticSize = "None",
             TextTransparency = 0,
@@ -2490,8 +2490,8 @@ function UI:CreateWindow(Config)
             }
         }, {
             VexUI:Create("UIPadding", {
-                PaddingLeft = UDim.new(0,8),
-                PaddingRight = UDim.new(0,8)
+                PaddingLeft = UDim.new(0,16),
+                PaddingRight = UDim.new(0,24)
             })
         })
         local TabIcon
@@ -2500,7 +2500,7 @@ function UI:CreateWindow(Config)
                 AnchorPoint = Vector2.new(0, 0.5),
                 Image = GetIcon(Tab.Icon),
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 10, 0.5, 0),
+                Position = UDim2.new(0, 16, 0.5, 0),
                 BorderColor3 = Color3.new(0, 0, 0),
                 Size = UDim2.new(0, 16, 0, 16),
                 BorderSizePixel = 0,
@@ -2510,7 +2510,7 @@ function UI:CreateWindow(Config)
                     ImageColor3 = "Tab.IconColor|IconColor"
                 }
             })
-            TabTitle.UIPadding.PaddingLeft = UDim.new(0,31)
+            TabTitle.UIPadding.PaddingLeft = UDim.new(0,42)
         end
         TabBack.BackgroundTransparency = 1
         TabTitle.TextTransparency = 0.3
@@ -2521,11 +2521,11 @@ function UI:CreateWindow(Config)
         
         local ActiveRail = VexUI:Create("Frame", {
             Name = "ActiveRail", Parent = TabBack,
-            Position = UDim2.new(0, 0, 0.5, -8),
-            Size = UDim2.new(0, 2, 0, 16),
+            Position = UDim2.new(1, -16, 0.5, -2),
+            Size = UDim2.new(0, 4, 0, 4),
             BackgroundTransparency = 1, ZIndex = 7,
             ThemeID = { BackgroundColor3 = "Accent" },
-        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
+        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
 
         local ElementFrame = VexUI:Create("Frame", {
             Parent = ElementFolder,
@@ -4602,204 +4602,109 @@ function UI:CreateWindow(Config)
     return Window
 end
 
+local notificationHost
+local notificationOrder = 0
+
 function UI:Notification(Config)
-    coroutine.wrap(function()
-        local Notification = {
-            Title = Config.Title or "Notification",
-            Desc = Config.Desc or nil,
-            Icon = Config.Icon or nil,
-            Duration = Config.Duration or 5,
-            Interactive = Config.Interactive
-        }
-
-        local NotifFrame = VexUI:Create("Frame", {
-            Parent = Island,
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-            BackgroundTransparency = 0.2,
-            BorderSizePixel = 0,
-            ClipsDescendants = true,
-            LayoutOrder = 2,
-            Size = UDim2.new(0, 0, 0, 30),
-            ZIndex = 150,
-            ThemeID = { BackgroundColor3 = "SideBar"}
+    Config = Config or {}
+    if not notificationHost or not notificationHost.Parent then
+        notificationHost = VexUI:Create("ScrollingFrame", {
+            Name = "Notifications", Parent = UIScreen,
+            AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 16),
+            Size = UDim2.new(1, -32, 0.45, 0), BackgroundTransparency = 1,
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            ScrollingDirection = Enum.ScrollingDirection.Y,
+            ScrollBarThickness = 0, Active = true, ZIndex = 2000,
         }, {
-            VexUI:Create("UICorner", { CornerRadius = UDim.new(0, 12) }),
-            VexUI:Create("UIPadding", { PaddingTop = UDim.new(0, 9) }),
-            VexUI:Create("UIStroke", {
-                LineJoinMode = "Round",
-                Thickness = 0.6,
-                ThemeID = {
-                    Color = "Outline"
-                }
-            }, {
-                VexUI:Create("UIGradient", {
-                    Color = ColorSequence.new(
-                        Color3.fromRGB(255, 255, 255),
-                        Color3.fromRGB(255, 255, 255)
-                    ),
-                    Transparency = NumberSequence.new({
-                        NumberSequenceKeypoint.new(0, 0.1),
-                        NumberSequenceKeypoint.new(0.5, 1),
-                        NumberSequenceKeypoint.new(1, 1)
-                    }),
-                    Rotation = -100
-                })
-            }),
+            VexUI:Create("UISizeConstraint", {MaxSize = Vector2.new(360, 600)}),
+            Utility:ListLayout("V", 10), Utility:Padding(3),
         })
-
-        local Title = Text(NotifFrame, Notification.Title, {
-            Size = UDim2.new(1, 0, 1, 0),
-            AutomaticSize = "X",
-            ZIndex = 16,
-            FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-            TextSize = 11,
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            RichText = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            ZIndex = 151,
-            ThemeID = { TextColor3 = "Text" }
-        }, {
-            VexUI:Create("UIPadding", { PaddingLeft = UDim.new(0, 10) })
-        })
-
-        local Desc
-        if Notification.Desc then
-            Title.UIPadding.PaddingBottom = UDim.new(0, 12)
-            Desc = Text(NotifFrame, Notification.Desc, {
-                Size = UDim2.new(1, 0, 1, 0),
-                AutomaticSize = "X",
-                ZIndex = 16,
-                FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-                TextSize = 10,
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                RichText = true,
-                TextTransparency = 0.3,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                ZIndex = 151,
-                ThemeID = { TextColor3 = "Text" }
-            }, {
-                VexUI:Create("UIPadding", { PaddingLeft = UDim.new(0, 10),PaddingTop = UDim.new(0, 10)})
-            })
-
-        end
-    local Icon
-    if Notification.Icon then
-        Desc.UIPadding.PaddingLeft = UDim.new(0,33)
-        Title.UIPadding.PaddingLeft = UDim.new(0,33)
-        local Icon = VexUI:Create("ImageLabel", {
-            AnchorPoint = Vector2.new(0, 0.5),
-            --Image = IconsV2.GetIcon(Window.Icon),
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0, 7, 0.3, 0),
-            Size = UDim2.new(0, 20, 0, 20),
-            ZIndex = 150,
-            Parent = NotifFrame,
-            ThemeID = {
-                ImageColor3 = "Notification.Icon|IconColor"
-            }
-        })
-        if Notification.Icon and IconsV2.Icon(Notification.Icon) then
-            Icon.Image = IconsV2.GetIcon(Notification.Icon)
-        elseif Notification.Icon and string.find(Notification.Icon, "rbxassetid://") then
-            Icon.Image = Notification.Icon
-        end
     end
-        activeNotifs += 1
-        UI.Notifications = activeNotifs
-        if UI.Window and (UI.Window.IslandOpen or UI.IslandOpen) and UI.Window.Default == "Default" then
-            Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3)
-        else
-            Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3)
-        end
-
-    local NotifDelay = VexUI:Create("Frame", {
-        Parent = NotifFrame,
-        ClipsDescendants = true,
-        AnchorPoint = Vector2.new(0,1),
-        Position = UDim2.new(0, 16, 1, 0),
-        Size = UDim2.new(0, 0, 0, 1),
-        ZIndex = 155,
-        ThemeID = { BackgroundColor3 = "Text"}
+    notificationOrder += 1
+    local duration = math.max(0.5, tonumber(Config.Duration) or 5)
+    local card = VexUI:Create("CanvasGroup", {
+        Name = "Notification", Parent = notificationHost,
+        LayoutOrder = notificationOrder, AutomaticSize = Enum.AutomaticSize.Y,
+        Size = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0,
+        BackgroundTransparency = 0.06, GroupTransparency = 1, ZIndex = 2001,
+        ThemeID = {BackgroundColor3 = "ElementColor"},
     }, {
-        VexUI:Create("UICorner", { CornerRadius = UDim.new(0, 16) }),
+        VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+        Utility:GlassStroke("Outline", 1),
+        VexUI:Create("UISizeConstraint", {MinSize = Vector2.new(0, 68)}),
     })
-
-    NotifFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            Utility:TweenObject(NotifFrame, {Size = UDim2.new(0, 0, 0, 30)}, 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            activeNotifs -= 1
-            UI.Notifications = activeNotifs
-
-            if UI.Window and (UI.Window.IslandOpen or UI.IslandOpen) and UI.Window.Default == "Default" then
-                Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3)
-            else
-                Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3)
-            end
-            if activeNotifs == 0 then
-                if UI.Window and (UI.Window.IslandOpen or UI.IslandOpen) and UI.Window.Default == "Default" then
-                    Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.2, 0)}, 0.3)
-                else
-                    Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3)
-                end
-            end
-            task.wait(0.3)
-            NotifFrame:Destroy()
-        end
-    end)
-
-    --[[local NotifFrame1 = VexUI:Create("Frame", {
-        Parent = NotifFrame,
-        BackgroundTransparency = 0.1,
-        BorderSizePixel = 0,
-        LayoutOrder = 2,
-        ClipsDescendants = true,
-        AnchorPoint = Vector2.new(0,0),
-        Position = UDim2.new(0, 0, 0, 0),
-        Size = UDim2.new(1, 0, 1, 0),
-        ZIndex = 120,
-        ThemeID = { BackgroundColor3 = "Background"}
-    }, {
-        VexUI:Create("UICorner", { CornerRadius = UDim.new(0, 12) }),
+    local textLeft = Config.Icon and 42 or 16
+    local content = VexUI:Create("Frame", {
+        Parent = card, BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y,
+        Size = UDim2.new(1, -textLeft - 38, 0, 0),
+        Position = UDim2.new(0, textLeft, 0, 0), ZIndex = 2002,
+    }, {Utility:ListLayout("V", 5), Utility:Padding({top = 14, bottom = 18})})
+    VexUI:Create("TextLabel", {
+        Parent = content, Text = tostring(Config.Title or "Notification"),
+        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 16),
+        AutomaticSize = Enum.AutomaticSize.Y, TextWrapped = true,
+        TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left,
+        LayoutOrder = 1, ZIndex = 2003, ThemeID = {TextColor3 = "Text"},
     })
-
-    NotifFrame.MouseEnter:connect(function()
-        Utility:TweenObject(NotifFrame1, {Size = UDim2.new(0, 150, 0, 100)}, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        Utility:TweenObject(NotifFrame1, {Position = UDim2.new(0, 0, 0, 28)}, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    end)
-
-    NotifFrame.MouseLeave:connect(function()
-        Utility:TweenObject(NotifFrame1, {Size = UDim2.new(1, 0, 1, 0)}, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        Utility:TweenObject(NotifFrame1, {Position = UDim2.new(0, 0, 0, 0)}, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    end)--]]
-
-        Utility:TweenObject(NotifFrame, {Size = UDim2.new(0, 150, 0, 30)}, 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        coroutine.wrap(function()
-            Utility:TweenObject(NotifDelay, {Size = UDim2.new(0, 118, 0, 1)}, 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            task.wait(0.5)
-            Utility:TweenObject(NotifDelay, {Size = UDim2.new(0, 0, 0, 1)}, Notification.Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        end)()
-        task.wait(Notification.Duration)
-        Utility:TweenObject(NotifFrame, {Size = UDim2.new(0, 0, 0, 30)}, 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-        activeNotifs -= 1
+    if Config.Desc and tostring(Config.Desc) ~= "" then
+        VexUI:Create("TextLabel", {
+            Parent = content, Text = tostring(Config.Desc),
+            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 15),
+            AutomaticSize = Enum.AutomaticSize.Y, TextWrapped = true,
+            FontFace = Font.fromEnum(Enum.Font.Gotham),
+            TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
+            LayoutOrder = 2, ZIndex = 2003, ThemeID = {TextColor3 = "Muted"},
+        })
+    end
+    if Config.Icon then
+        VexUI:Create("ImageLabel", {
+            Parent = card, Image = GetIcon(Config.Icon), BackgroundTransparency = 1,
+            Position = UDim2.new(0, 16, 0, 15), Size = UDim2.new(0, 16, 0, 16),
+            ZIndex = 2003, ThemeID = {ImageColor3 = "Accent"},
+        })
+    end
+    local close = VexUI:Create("ImageButton", {
+        Parent = card, Image = GetIcon("x"), BackgroundTransparency = 1,
+        Position = UDim2.new(1, -34, 0, 8), Size = UDim2.new(0, 28, 0, 28),
+        ImageTransparency = 1, ZIndex = 2004,
+    }, {VexUI:Create("ImageLabel", {
+        Image = GetIcon("x"), BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, -6, 0.5, -6), Size = UDim2.new(0, 12, 0, 12),
+        ZIndex = 2005, ThemeID = {ImageColor3 = "Muted"},
+    })})
+    local track = VexUI:Create("Frame", {
+        Parent = card, BackgroundTransparency = 1,
+        Position = UDim2.new(0, 16, 1, -5), Size = UDim2.new(1, -32, 0, 2), ZIndex = 2003,
+    })
+    local progress = VexUI:Create("Frame", {
+        Parent = track, Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 0.25,
+        ZIndex = 2003, ThemeID = {BackgroundColor3 = "Accent"},
+    }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
+    activeNotifs += 1
+    UI.Notifications = activeNotifs
+    local dismissed, counted = false, true
+    local function Uncount()
+        if not counted then return end
+        counted = false
+        activeNotifs = math.max(0, activeNotifs - 1)
         UI.Notifications = activeNotifs
-
-        task.wait(0.05)
-
-        if activeNotifs == 0 then
-            if UI.Window and (UI.Window.IslandOpen or UI.IslandOpen) and UI.Window.Default == "Default" then
-                Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.2, 0)}, 0.3)
-                --Utility:TweenObject(Title, {TextTransparency = 1}, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                --Utility:TweenObject(Desc, {TextTransparency = 1}, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                --Utility:TweenObject(Icon, {ImageTransparency = 1}, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            else
-                Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3)
-            end
-        end
-        task.wait(0.3)
-        NotifFrame:Destroy()
-    end)()
+    end
+    local function Dismiss()
+        if dismissed then return end
+        dismissed = true
+        Uncount()
+        if not card.Parent then return end
+        Utility:TweenObject(card, {GroupTransparency = 1}, 0.14)
+        task.delay(0.14, function() card:Destroy() end)
+    end
+    card.Destroying:Once(function() dismissed = true; Uncount() end)
+    close.Activated:Connect(Dismiss)
+    Utility:TweenObject(card, {GroupTransparency = 0}, 0.16)
+    Utility:TweenObject(progress, {Size = UDim2.new(0, 0, 1, 0)}, duration, Enum.EasingStyle.Linear)
+    task.delay(duration, Dismiss)
+    return {Close = Dismiss}
 end
+
 return UI
 
 --[[local VexUI = UI
