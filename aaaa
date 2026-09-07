@@ -4694,9 +4694,12 @@ function UI:CreateWindow(Config)
         if settingsPanel then CloseSettings(); return end
         if appearance then appearance:Destroy(); appearance = nil end
         settingsPanel = VexUI:Create("Frame", {Parent = Main, Name = "UISettings",
-            Size = UDim2.new(1, 0, 1, 0), ZIndex = 1300,
+            AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
+            Size = UDim2.new(1, -32, 1, -32), ZIndex = 1300,
             ThemeID = {BackgroundColor3 = "Background"}},
-            {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 16)})})
+            {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
+                Utility:GlassStroke("Outline", 1),
+                VexUI:Create("UISizeConstraint", {MaxSize = Vector2.new(560, 286)})})
         local function Label(parent, text, pos, size)
             return VexUI:Create("TextLabel", {Parent = parent, Text = text, Position = pos, Size = size,
                 BackgroundTransparency = 1, TextSize = 13, ZIndex = 1302,
@@ -4724,36 +4727,40 @@ function UI:CreateWindow(Config)
         local heading = Label(settingsPanel, "Settings", UDim2.new(0,84,0,12), UDim2.new(1,-168,0,30))
         heading.TextSize = 15
         heading.TextXAlignment = Enum.TextXAlignment.Center
-        local subtitle = Label(settingsPanel, "Make the interface yours.", UDim2.new(0,22,0,46), UDim2.new(1,-44,0,22))
-        subtitle.TextSize = 12
-        VexUI:AddThemeObject(subtitle, {TextColor3 = "Muted"})
         VexUI:Create("Frame", {Parent = settingsPanel,
             Position = UDim2.new(0.5,-24,0,42), Size = UDim2.new(0,48,0,2),
             ZIndex = 1302, ThemeID = {BackgroundColor3 = "Accent"}},
             {VexUI:Create("UICorner", {CornerRadius = UDim.new(0,1)})})
         Button(settingsPanel, "Done", UDim2.new(1,-78,0,16), UDim2.new(0,56,0,32), CloseSettings)
         local list = VexUI:Create("ScrollingFrame", {Parent = settingsPanel,
-            Position = UDim2.new(0,22,0,82), Size = UDim2.new(1,-44,1,-104),
+            Position = UDim2.new(0,16,0,62), Size = UDim2.new(1,-32,1,-76),
             BackgroundTransparency = 1, Active = true, ZIndex = 1301,
             AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y},
-            {Utility:ListLayout("V",12), Utility:Padding({bottom = 12})})
+            {Utility:ListLayout("V",8), Utility:Padding({bottom = 12})})
         local function Row(title, order)
-            local row = VexUI:Create("Frame", {Parent = list, Size = UDim2.new(1,-6,0,100),
+            local row = VexUI:Create("Frame", {Parent = list, Size = UDim2.new(1,-6,0,60),
                 BackgroundTransparency = 0, LayoutOrder = order, ZIndex = 1302,
                 ThemeID = {BackgroundColor3 = "ElementColor"}}, {
                     VexUI:Create("UICorner", {CornerRadius = UDim.new(0,8)}),
                     Utility:GlassStroke("Outline",1),
-                    Utility:Padding({top = 10, bottom = 10, left = 14, right = 14}),
+                    Utility:Padding({top = 10, bottom = 10, left = 12, right = 8}),
                 })
-            Label(row, title, UDim2.new(), UDim2.new(1,0,0,26))
+            local icons = {"keyboard", "scan", "type"}
+            VexUI:Create("ImageLabel", {Parent = row, Image = GetIcon(icons[order]),
+                BackgroundTransparency = 1, Position = UDim2.new(0,0,0.5,-7),
+                Size = UDim2.new(0,14,0,14), ZIndex = 1303,
+                ThemeID = {ImageColor3 = "Accent"}})
+            local label = Label(row, title, UDim2.new(0,22,0,0), UDim2.new(1,-204,1,0))
+            label.TextSize = 12
+            label.TextWrapped = true
             return row
         end
         local row = Row("Reopen key",1)
         local keyButton
-        keyButton = Button(row, Window.ToggleKey.Name, UDim2.new(0,0,0,34), UDim2.new(1,-92,0,40), function()
+        keyButton = Button(row, Window.ToggleKey.Name, UDim2.new(1,-176,0,0), UDim2.new(0,112,0,40), function()
             if capturingReopenKey then CancelCapture(); keyButton.Text = Window.ToggleKey.Name; return end
             capturingReopenKey = true
-            keyButton.Text = "Press a key (Esc cancels)"
+            keyButton.Text = "Press key…"
             captureConnection = UserInputService.InputBegan:Connect(function(input)
                 if input.UserInputType ~= Enum.UserInputType.Keyboard or input.KeyCode == Enum.KeyCode.Unknown then return end
                 if input.KeyCode ~= Enum.KeyCode.Escape then Window:SetToggleKey(input.KeyCode) end
@@ -4761,23 +4768,23 @@ function UI:CreateWindow(Config)
                 task.defer(CancelCapture)
             end)
         end)
-        Button(row,"Restore",UDim2.new(1,-82,0,34),UDim2.new(0,82,0,40),function()
+        Button(row,"Restore",UDim2.new(1,-60,0,0),UDim2.new(0,60,0,40),function()
             CancelCapture(); Window:SetToggleKey(defaultReopenKey); keyButton.Text = Window.ToggleKey.Name
         end)
         local function Stepper(title, order, get, set, low, high)
             local row = Row(title,order)
-            local value = Label(row,"",UDim2.new(0,44,0,34),UDim2.new(1,-180,0,40))
+            local value = Label(row,"",UDim2.new(1,-144,0,0),UDim2.new(0,48,0,40))
             value.TextXAlignment = Enum.TextXAlignment.Center
-            value.TextSize = 14
+            value.TextSize = 12
             VexUI:AddThemeObject(value, {TextColor3 = "Accent"})
             local function Update(v)
                 set(math.clamp(math.round(v*100)/100,low,high))
                 value.Text = tostring(math.round(get()*100)) .. "%"
                 NotifyAction(title, value.Text)
             end
-            Button(row,"-",UDim2.new(0,0,0,34),UDim2.new(0,40,0,40),function() Update(get()-0.05) end)
-            Button(row,"+",UDim2.new(1,-132,0,34),UDim2.new(0,40,0,40),function() Update(get()+0.05) end)
-            Button(row,"Restore",UDim2.new(1,-82,0,34),UDim2.new(0,82,0,40),function() Update(1) end)
+            Button(row,"-",UDim2.new(1,-180,0,0),UDim2.new(0,34,0,40),function() Update(get()-0.05) end)
+            Button(row,"+",UDim2.new(1,-94,0,0),UDim2.new(0,34,0,40),function() Update(get()+0.05) end)
+            Button(row,"Restore",UDim2.new(1,-60,0,0),UDim2.new(0,60,0,40),function() Update(1) end)
             value.Text = tostring(math.round(get()*100)) .. "%"
         end
         Stepper("UI scale",2,function() return Window.ScaleMultiplier end,function(value)
