@@ -3030,11 +3030,30 @@ function UI:CreateWindow(Config)
             RenderToggle(false)
             local initialValue = Val
             task.spawn(function() pcall(Togglee.Callback, initialValue) end)
-            ToggleTRG.Activated:Connect(function()
+            local function ActivateToggle()
                 if Togglee.Locked then return end
                 Togglee:SetValue(not Val)
                 NotifyAction(Togglee.Title, Val and "Enabled" or "Disabled")
-            end)
+            end
+            ToggleTRG.Active = true
+            ToggleTRG.Activated:Connect(ActivateToggle)
+            -- Keep a hit target directly above the track and knob as well as the row.
+            -- Sibling buttons share the handler; one activation changes the value once.
+            local SwitchHit = VexUI:Create("TextButton", {
+                Name = "SwitchHit", Parent = Beeee,
+                BackgroundTransparency = 1, Text = "", TextTransparency = 1,
+                Active = true, AutoButtonColor = false, ZIndex = 26,
+                Size = UDim2.new(0, 48, 1, 0),
+            })
+            local function AlignSwitchHit()
+                local scale = math.max(0.05, Main.UIScale.Scale)
+                local center = ToggleV.AbsolutePosition.X + ToggleV.AbsoluteSize.X / 2
+                SwitchHit.Position = UDim2.new(0, (center - Beeee.AbsolutePosition.X) / scale - 24, 0, 0)
+            end
+            ToggleV:GetPropertyChangedSignal("AbsolutePosition"):Connect(AlignSwitchHit)
+            ToggleV:GetPropertyChangedSignal("AbsoluteSize"):Connect(AlignSwitchHit)
+            SwitchHit.Activated:Connect(ActivateToggle)
+            AlignSwitchHit()
             Beeee.Destroying:Once(function()
                 if knobTween then knobTween:Cancel() end
             end)
