@@ -4595,14 +4595,37 @@ function UI:CreateWindow(Config)
     UI.Window = Window
     -- Appearance opens from a small header control, without adding a navigation tab.
     local appearance
+    local floatingPanels = VexUI:Create("Frame", {
+        Name = "FloatingPanels", Parent = UIScreen, Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1, Active = false, Visible = Main.Visible,
+    })
+    local panelVisibility = Main:GetPropertyChangedSignal("Visible"):Connect(function()
+        floatingPanels.Visible = Main.Visible
+    end)
+    Main.Destroying:Once(function() panelVisibility:Disconnect(); floatingPanels:Destroy() end)
+    local function DockPanel(panel, right, width, height)
+        local scale = VexUI:Create("UIScale", {Parent = panel, Scale = 1})
+        panel.AnchorPoint = Vector2.new(right and 1 or 0, 0.5)
+        panel.Position = UDim2.new(right and 1 or 0, right and -16 or 16, 0.5, 0)
+        panel.Size = UDim2.new(0, width, 0, height)
+        local function Fit()
+            local viewport = floatingPanels.AbsoluteSize
+            if viewport.X <= 0 or viewport.Y <= 0 then return end
+            scale.Scale = math.max(0.05, math.min(1, (viewport.X - 32) / width, (viewport.Y - 32) / height))
+        end
+        local resized = floatingPanels:GetPropertyChangedSignal("AbsoluteSize"):Connect(Fit)
+        panel.Destroying:Once(function() resized:Disconnect() end)
+        Fit()
+    end
     local choices = {"Dark", "Midnight", "Mocha", "Crimson", "Afterglow", "Halloween"}
     local function OpenAppearance()
         if appearance then appearance:Destroy(); appearance = nil; return end
         appearance = VexUI:Create("TextButton", {
-            Name = "Appearance", Parent = Main, Text = "", Active = true,
+            Name = "Appearance", Parent = floatingPanels, Text = "", Active = true,
             Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 0.08,
             ZIndex = 1200, ThemeID = {BackgroundColor3 = "Background"},
         }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 16)})})
+        DockPanel(appearance, false, 400, 388)
         local overlay = appearance
         VexUI:Create("TextLabel", {
             Parent = overlay, Text = "Appearance", TextSize = 18,
@@ -4689,17 +4712,23 @@ function UI:CreateWindow(Config)
         CancelCapture()
         if settingsPanel then settingsPanel:Destroy(); settingsPanel = nil end
     end
-    Main.Destroying:Once(function() CancelCapture(); newText:Disconnect() end)
+    local captureVisibility = floatingPanels:GetPropertyChangedSignal("Visible"):Connect(function()
+        if not floatingPanels.Visible then
+            CancelCapture()
+            if settingsPanel then settingsPanel:Destroy(); settingsPanel = nil end
+        end
+    end)
+    Main.Destroying:Once(function() CancelCapture(); newText:Disconnect(); captureVisibility:Disconnect() end)
     local function OpenSettings()
         if settingsPanel then CloseSettings(); return end
-        if appearance then appearance:Destroy(); appearance = nil end
-        settingsPanel = VexUI:Create("Frame", {Parent = Main, Name = "UISettings",
+        settingsPanel = VexUI:Create("Frame", {Parent = floatingPanels, Name = "UISettings",
             AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
             Size = UDim2.new(1, -32, 1, -32), ZIndex = 1300,
             ThemeID = {BackgroundColor3 = "Background"}},
             {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
                 Utility:GlassStroke("Outline", 1),
                 VexUI:Create("UISizeConstraint", {MaxSize = Vector2.new(560, 286)})})
+        DockPanel(settingsPanel, true, 440, 286)
         local function Label(parent, text, pos, size)
             return VexUI:Create("TextLabel", {Parent = parent, Text = text, Position = pos, Size = size,
                 BackgroundTransparency = 1, TextSize = 13, ZIndex = 1302,
