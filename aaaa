@@ -4908,6 +4908,89 @@ function UI:CreateWindow(Config)
         Utility:TweenObject(SettingsButton, {BackgroundTransparency = 1}, 0.12)
     end)
 
+    local searchPanel
+    local function OpenControlSearch()
+        if searchPanel then searchPanel:Destroy(); searchPanel = nil; return end
+        searchPanel = VexUI:Create("Frame", {
+            Name = "ControlSearch", Parent = Main, Position = UDim2.new(0,12,0,54),
+            Size = UDim2.new(1,-24,1,-68), ZIndex = 1400,
+            ThemeID = {BackgroundColor3 = "Background"},
+        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0,10)}), Utility:GlassStroke()})
+        local query = VexUI:Create("TextBox", {
+            Parent = searchPanel, Position = UDim2.new(0,14,0,12), Size = UDim2.new(1,-74,0,36),
+            Text = "", PlaceholderText = "Find a control...", ClearTextOnFocus = false,
+            TextSize = 14, Font = Enum.Font.Gotham, BackgroundTransparency = 1,
+            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 1402,
+            ThemeID = {TextColor3 = "Text", PlaceholderColor3 = "Muted"},
+        })
+        local close = VexUI:Create("TextButton", {
+            Parent = searchPanel, Position = UDim2.new(1,-52,0,12), Size = UDim2.new(0,40,0,36),
+            Text = "Done", TextTransparency = 0, BackgroundTransparency = 1, ZIndex = 1402,
+            ThemeID = {TextColor3 = "Muted"},
+        })
+        local function CloseSearch()
+            query:ReleaseFocus()
+            if searchPanel then searchPanel:Destroy(); searchPanel = nil end
+        end
+        close.Activated:Connect(CloseSearch)
+        local results = VexUI:Create("ScrollingFrame", {
+            Parent = searchPanel, Position = UDim2.new(0,12,0,56), Size = UDim2.new(1,-24,1,-68),
+            BackgroundTransparency = 1, Active = true, ZIndex = 1401,
+            AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
+        }, {Utility:ListLayout("V",6), Utility:Padding({bottom = 12})})
+        local function Render()
+            for _, object in ipairs(results:GetChildren()) do
+                if object:IsA("GuiObject") then object:Destroy() end
+            end
+            local text = query.Text:lower():match("^%s*(.-)%s*$")
+            local count = 0
+            for _, entry in ipairs(Window.SearchIndex) do
+                local haystack = (tostring(entry.Title) .. " " .. tostring(entry.Desc or "") .. " " .. tostring(entry.TabTitle or "")):lower()
+                if text ~= "" and haystack:find(text, 1, true) and entry.Frame and entry.Frame.Parent then
+                    count += 1
+                    local item = VexUI:Create("TextButton", {
+                        Parent = results, Size = UDim2.new(1,-6,0,48), LayoutOrder = count,
+                        Text = "", ZIndex = 1402, ThemeID = {BackgroundColor3 = "ElementColor"},
+                    }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0,7)})})
+                    VexUI:Create("TextLabel", {Parent = item, Text = tostring(entry.Title),
+                        Position = UDim2.new(0,12,0,5), Size = UDim2.new(1,-24,0,20),
+                        BackgroundTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left,
+                        TextTruncate = Enum.TextTruncate.AtEnd, TextSize = 13, ZIndex = 1403,
+                        ThemeID = {TextColor3 = "Text"}})
+                    VexUI:Create("TextLabel", {Parent = item, Text = tostring(entry.TabTitle or "") .. " / " .. tostring(entry.Type or "Control"),
+                        Position = UDim2.new(0,12,0,25), Size = UDim2.new(1,-24,0,18),
+                        BackgroundTransparency = 1, TextXAlignment = Enum.TextXAlignment.Left,
+                        TextSize = 11, ZIndex = 1403, ThemeID = {TextColor3 = "Muted"}})
+                    item.Activated:Connect(function()
+                        CloseSearch()
+                        entry.SelectFn()
+                        task.delay(0.2, function()
+                            local scroll, target = entry.RightScroll, entry.Frame
+                            if not scroll or not scroll.Parent or not target.Parent then return end
+                            local scale = math.max(0.05, Main.UIScale.Scale)
+                            local y = scroll.CanvasPosition.Y + (target.AbsolutePosition.Y - scroll.AbsolutePosition.Y) / scale - 8
+                            scroll.CanvasPosition = Vector2.new(0, math.clamp(y,0,
+                                math.max(0,(scroll.AbsoluteCanvasSize.Y-scroll.AbsoluteWindowSize.Y)/scale)))
+                        end)
+                    end)
+                end
+            end
+            if count == 0 then
+                VexUI:Create("TextLabel", {Parent = results,
+                    Text = text == "" and "Search by name, description or tab." or "No matching controls.",
+                    Size = UDim2.new(1,-6,0,40), BackgroundTransparency = 1,
+                    TextWrapped = true, ZIndex = 1402, ThemeID = {TextColor3 = "Muted"}})
+            end
+        end
+        query:GetPropertyChangedSignal("Text"):Connect(Render)
+        Render()
+        query:CaptureFocus()
+    end
+    HeaderButton("SearchButton", "search", 0, OpenControlSearch).Position = UDim2.new(0,82,0,12)
+    TitleLabel.Position = UDim2.new(0,116,0,8)
+    TitleLabel.Size = UDim2.new(1,-232,0,36)
+
+
     notificationsReady = true
     return Window
 end
