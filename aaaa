@@ -4608,13 +4608,67 @@ function UI:CreateWindow(Config)
         panel.AnchorPoint = Vector2.new(right and 1 or 0, 0.5)
         panel.Position = UDim2.new(right and 1 or 0, right and -16 or 16, 0.5, 0)
         panel.Size = UDim2.new(0, width, 0, height)
+        local dragInput, dragStart, panelStart
+        local moved = false
+        local function Place(topLeft)
+            local viewport = floatingPanels.AbsoluteSize
+            local size = panel.AbsoluteSize
+            local x = math.clamp(topLeft.X, 8, math.max(8, viewport.X - size.X - 8))
+            local y = math.clamp(topLeft.Y, 8, math.max(8, viewport.Y - size.Y - 8))
+            panel.Position = UDim2.fromOffset(x + size.X * panel.AnchorPoint.X,
+                y + size.Y * panel.AnchorPoint.Y)
+        end
         local function Fit()
             local viewport = floatingPanels.AbsoluteSize
             if viewport.X <= 0 or viewport.Y <= 0 then return end
             scale.Scale = math.max(0.05, math.min(1, (viewport.X - 32) / width, (viewport.Y - 32) / height))
+            if moved then
+                task.defer(function()
+                    if panel.Parent then Place(panel.AbsolutePosition - floatingPanels.AbsolutePosition) end
+                end)
+            end
         end
+        -- Header only: leave Done, settings controls and palette scrolling unobstructed.
+        local grip = VexUI:Create("TextButton", {
+            Name = "DragHeader", Parent = panel,
+            Position = UDim2.new(0, 8, 0, 4), Size = UDim2.new(1, -100, 0, 40),
+            Text = "", TextTransparency = 1, BackgroundTransparency = 1,
+            Active = true, AutoButtonColor = false, ZIndex = panel.ZIndex + 4,
+        })
+        grip.InputBegan:Connect(function(input)
+            if dragInput then return end
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1
+                and input.UserInputType ~= Enum.UserInputType.Touch then return end
+            dragInput = input
+            dragStart = Vector2.new(input.Position.X, input.Position.Y)
+            panelStart = panel.AbsolutePosition - floatingPanels.AbsolutePosition
+        end)
+        local movement = UserInputService.InputChanged:Connect(function(input)
+            if not dragInput then return end
+            local touch = dragInput.UserInputType == Enum.UserInputType.Touch
+            if (touch and input == dragInput)
+                or (not touch and input.UserInputType == Enum.UserInputType.MouseMovement) then
+                moved = true
+                Place(panelStart + Vector2.new(input.Position.X, input.Position.Y) - dragStart)
+            end
+        end)
+        local release = UserInputService.InputEnded:Connect(function(input)
+            if input == dragInput or (dragInput and dragInput.UserInputType == Enum.UserInputType.MouseButton1
+                and input.UserInputType == Enum.UserInputType.MouseButton1) then dragInput = nil end
+        end)
+        local focus = UserInputService.WindowFocusReleased:Connect(function() dragInput = nil end)
+        local hidden = floatingPanels:GetPropertyChangedSignal("Visible"):Connect(function()
+            if not floatingPanels.Visible then dragInput = nil end
+        end)
         local resized = floatingPanels:GetPropertyChangedSignal("AbsoluteSize"):Connect(Fit)
-        panel.Destroying:Once(function() resized:Disconnect() end)
+        panel.Destroying:Once(function()
+            dragInput = nil
+            resized:Disconnect()
+            movement:Disconnect()
+            release:Disconnect()
+            focus:Disconnect()
+            hidden:Disconnect()
+        end)
         Fit()
     end
     local choices = {"Dark", "Midnight", "Mocha", "Crimson", "Afterglow", "Halloween"}
