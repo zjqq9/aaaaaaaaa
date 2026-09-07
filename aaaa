@@ -130,7 +130,7 @@ Palette("Midnight", "0d0e11", "191b20", "e6e7eb", "a6acbc")
 Palette("Mocha", "1e1e2e", "313244", "cdd6f4", "cba6f7")
 Palette("Tokyo", "1a1b26", "24283b", "c0caf5", "7aa2f7")
 Palette("Rose", "191724", "26233a", "e0def4", "ebbcba")
-Palette("Paper", "f4f1eb", "e8e3da", "35332f", "946b45")
+Palette("Halloween", "171311", "29201b", "f2e7dc", "ff943d")
 
 -- Semantic colors keep custom themes compatible with the component palette.
 for name, theme in pairs(VexUI.Themes) do
@@ -4487,7 +4487,7 @@ function UI:CreateWindow(Config)
     UI.Window = Window
     -- Appearance opens from a small header control, without adding a navigation tab.
     local appearance
-    local choices = {"Dark", "Midnight", "Mocha", "Tokyo", "Rose", "Paper"}
+    local choices = {"Dark", "Midnight", "Mocha", "Tokyo", "Rose", "Halloween"}
     local function OpenAppearance()
         if appearance then appearance:Destroy(); appearance = nil; return end
         appearance = VexUI:Create("TextButton", {
