@@ -190,9 +190,15 @@ function VexUI:GetThemeProperty(property, theme, fallbackProperty)
         or (fallbackProperty and (resolve(theme, fallbackProperty) or resolve(VexUI.Themes["Dark"], fallbackProperty)))
 end
 
+local themeTweens = setmetatable({}, {__mode = "k"})
+
 function VexUI:AddThemeObject(object, properties)
     if not VexUI.Objects[object] then
-        object.Destroying:Once(function() VexUI.Objects[object] = nil end)
+        object.Destroying:Once(function()
+            if themeTweens[object] then themeTweens[object]:Cancel() end
+            themeTweens[object] = nil
+            VexUI.Objects[object] = nil
+        end)
     end
     VexUI.Objects[object] = { Object = object, Properties = properties }
     VexUI:UpdateTheme(object, false)
@@ -201,6 +207,12 @@ end
 
 function VexUI:UpdateTheme(targetObject, isTween)
     local function ApplyTheme(objData)
+        local object = objData.Object
+        if themeTweens[object] then
+            themeTweens[object]:Cancel()
+            themeTweens[object] = nil
+        end
+        local targetColors = {}
         for property, colorKey in pairs(objData.Properties or {}) do
             local color = nil
             for _, key in ipairs(string.split(colorKey, "|")) do
@@ -210,13 +222,22 @@ function VexUI:UpdateTheme(targetObject, isTween)
             end
 
             if color then
-                if not isTween then
-                    objData.Object[property] = color
-                else
-                    Utility:TweenObject(objData.Object, { [property] = color }, 0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                end
+                targetColors[property] = color
             end
         end
+        if not next(targetColors) then return end
+        if not isTween then
+            for property, color in pairs(targetColors) do object[property] = color end
+            return
+        end
+        -- Start at the currently displayed colors, including an interrupted transition.
+        local tween = TweenService:Create(object,
+            TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), targetColors)
+        themeTweens[object] = tween
+        tween.Completed:Once(function()
+            if themeTweens[object] == tween then themeTweens[object] = nil end
+        end)
+        tween:Play()
     end
 
     if targetObject then
