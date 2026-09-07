@@ -677,17 +677,23 @@ function UI:CreateWindow(Config)
         SearchIndex = {},
     }
     Window.IslandOpen = true
+    local notificationsReady = false
+    local function NotifyAction(title, detail)
+        if notificationsReady then UI:Notification({Title = title, Desc = detail, Duration = 3}) end
+    end
 
     function Window:SetTheme(themeName)
-        Window.Theme = themeName
+        local previousTheme = Window.Theme
         local theme = VexUI.Themes[themeName]
         if not theme then
             warn("Theme '" .. tostring(themeName) .. "' not found.")
             return
         end
         
+        Window.Theme = themeName
         UI.Theme = theme
         VexUI:UpdateTheme(nil, true)
+        if previousTheme ~= themeName then NotifyAction("Theme changed", themeName) end
     end
 
     Window:SetTheme(Window.Theme)
@@ -2899,6 +2905,7 @@ function UI:CreateWindow(Config)
             ButtonTRG.MouseButton1Click:Connect(function()
                 if Button.Locked then return end
                 spawn(function() pcall(Button.Callback) end)
+                NotifyAction(Button.Title, "Activated")
                 Utility:TweenObject(ButtonFrame, {BackgroundTransparency = 0}, 0.1)
                 wait(0.1)
                 Utility:TweenObject(ButtonFrame, {BackgroundTransparency = 0.5}, 0.1)
@@ -3026,6 +3033,7 @@ function UI:CreateWindow(Config)
             ToggleTRG.Activated:Connect(function()
                 if Togglee.Locked then return end
                 Togglee:SetValue(not Val)
+                NotifyAction(Togglee.Title, Val and "Enabled" or "Disabled")
             end)
             Beeee.Destroying:Once(function()
                 if knobTween then knobTween:Cancel() end
@@ -3085,7 +3093,10 @@ function UI:CreateWindow(Config)
                 })
                 buttons[index] = button
                 button.Activated:Connect(function()
-                    if not Rating.Locked then Rating:SetValue(index) end
+                    if not Rating.Locked then
+                        Rating:SetValue(index)
+                        NotifyAction(Config.Title or "Rating", tostring(index) .. " / 5 stars")
+                    end
                 end)
                 button.MouseEnter:Connect(function()
                     if not Rating.Locked and not UserInputService.TouchEnabled then Paint(index) end
@@ -3262,10 +3273,12 @@ function UI:CreateWindow(Config)
             DropValue.Size = UDim2.new(ValueRatio(Value), 0, 1, 0)
             local dragInput, moveConnection, endConnection
             local previousScrolling
+            local dragStartValue
             local function StopDrag()
                 if not dragInput then return end
                 dragInput = nil
                 HoldingSlider = false
+                if Value ~= dragStartValue then NotifyAction(Slider.Title, FormatValue(Value)) end
                 if moveConnection then moveConnection:Disconnect(); moveConnection = nil end
                 if endConnection then endConnection:Disconnect(); endConnection = nil end
                 if RightScroll.Parent then RightScroll.ScrollingEnabled = previousScrolling end
@@ -3288,6 +3301,7 @@ function UI:CreateWindow(Config)
                 local touch = input.UserInputType == Enum.UserInputType.Touch
                 if not touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                 dragInput = input
+                dragStartValue = Value
                 HoldingSlider = true
                 previousScrolling = RightScroll.ScrollingEnabled
                 RightScroll.ScrollingEnabled = false
@@ -3717,6 +3731,7 @@ function UI:CreateWindow(Config)
 
                             closeDropdown()
                             task.spawn(Dropdown.Callback, Item)
+                            NotifyAction(Dropdown.Title, tostring(Item))
                         else
                             itemEntry.Selected = not itemEntry.Selected
 
@@ -3737,6 +3752,7 @@ function UI:CreateWindow(Config)
 
                             DropOptionBox.Text = table.concat(Dropdown.Options, ", ")
                             task.spawn(Dropdown.Callback, Dropdown.Options)
+                            NotifyAction(Dropdown.Title, "Selection updated")
                         end
                     end)
                 end
@@ -3896,8 +3912,9 @@ function UI:CreateWindow(Config)
 
             InputBox.FocusLost:Connect(function(enterPressed)
                 if Input.Locked then return end
-                if not enterPressed then return end
+                if not enterPressed and not UserInputService.TouchEnabled then return end
                 fireCallback()
+                NotifyAction(Input.Title, "Value saved")
             end)
 
             function Input:SetValue(Val)
@@ -4005,6 +4022,7 @@ function UI:CreateWindow(Config)
                         KeyFrame.Text = keyName
                         Keybind.Value = keyName
                         task.spawn(Keybind.Callback, keyName)
+                        NotifyAction(Keybind.Title, "Keybind set to " .. keyName)
                     end
                 end)
             end)
@@ -4245,6 +4263,7 @@ function UI:CreateWindow(Config)
     end
 
     function Window:Open()
+        if not Window.IslandOpen then NotifyAction(Window.Name, "UI reopened") end
         visibilityRevision += 1
         local revision = visibilityRevision
         Island.Visible = false
@@ -4275,6 +4294,7 @@ function UI:CreateWindow(Config)
         MinzUI.Visible = false
     end
     function Window:Close()
+        if Window.IslandOpen then NotifyAction(Window.Name, "UI minimized") end
         visibilityRevision += 1
         local revision = visibilityRevision
         Island.Visible = false
@@ -4342,6 +4362,7 @@ function UI:CreateWindow(Config)
     end)
 
     function Window:Destroy()
+        NotifyAction(Window.Name, "UI closed")
         Window.IslandOpen = false
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
@@ -4372,6 +4393,7 @@ function UI:CreateWindow(Config)
     end)
 
     function Window:SetToggleKey(Value)
+        if Window.ToggleKey ~= Value then NotifyAction("Reopen key", Value.Name) end
         Window.ToggleKey = Value
         return Window
     end
@@ -4732,6 +4754,7 @@ function UI:CreateWindow(Config)
             local function Update(v)
                 set(math.clamp(math.round(v*100)/100,low,high))
                 value.Text = tostring(math.round(get()*100)) .. "%"
+                NotifyAction(title, value.Text)
             end
             Button(row,"-",UDim2.new(0,0,0,34),UDim2.new(0,40,0,40),function() Update(get()-0.05) end)
             Button(row,"+",UDim2.new(1,-132,0,34),UDim2.new(0,40,0,40),function() Update(get()+0.05) end)
@@ -4755,17 +4778,23 @@ function UI:CreateWindow(Config)
         Utility:TweenObject(SettingsButton, {BackgroundTransparency = 1}, 0.12)
     end)
 
+    notificationsReady = true
     return Window
 end
 
+local notificationScreen
 local notificationHost
 local notificationOrder = 0
 
 function UI:Notification(Config)
     Config = Config or {}
     if not notificationHost or not notificationHost.Parent then
+        notificationScreen = VexUI:Create("ScreenGui", {
+            Name = "VexNotifications", Parent = game:GetService("CoreGui"),
+            ResetOnSpawn = false, DisplayOrder = 1000,
+        })
         notificationHost = VexUI:Create("ScrollingFrame", {
-            Name = "Notifications", Parent = UIScreen,
+            Name = "Notifications", Parent = notificationScreen,
             AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 16),
             Size = UDim2.new(1, -32, 0.45, 0), BackgroundTransparency = 1,
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -4851,7 +4880,14 @@ function UI:Notification(Config)
         Uncount()
         if not card.Parent then return end
         Utility:TweenObject(card, {GroupTransparency = 1}, 0.14)
-        task.delay(0.14, function() card:Destroy() end)
+        task.delay(0.14, function()
+            card:Destroy()
+            if activeNotifs == 0 and notificationScreen then
+                notificationScreen:Destroy()
+                notificationScreen = nil
+                notificationHost = nil
+            end
+        end)
     end
     card.Destroying:Once(function() dismissed = true; Uncount() end)
     close.Activated:Connect(Dismiss)
