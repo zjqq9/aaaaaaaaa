@@ -2521,11 +2521,11 @@ function UI:CreateWindow(Config)
         
         local ActiveRail = VexUI:Create("Frame", {
             Name = "ActiveRail", Parent = TabBack,
-            Position = UDim2.new(1, -16, 0.5, -2),
-            Size = UDim2.new(0, 4, 0, 4),
+            Position = UDim2.new(0, 5, 0.5, -7),
+            Size = UDim2.new(0, 2, 0, 14),
             BackgroundTransparency = 1, ZIndex = 7,
             ThemeID = { BackgroundColor3 = "Accent" },
-        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
+        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
 
         local ElementFrame = VexUI:Create("Frame", {
             Parent = ElementFolder,
@@ -2942,11 +2942,11 @@ function UI:CreateWindow(Config)
                 }
             },{
                 VexUI:Create("Frame", {
-                    AnchorPoint = Vector2.new(.96, 0.5),
-                    Position = UDim2.new(0, 18, 0.5, 0),
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.new(0, 12, 0.5, 0),
                     ClipsDescendants = true,
                     BackgroundTransparency = 0.8,
-                    Size = UDim2.new(0, 15, 0, 15),
+                    Size = UDim2.new(0, 16, 0, 16),
                     ZIndex = 15,
                     ThemeID = {
                         BackgroundColor3 = "Toggle.ToggleVal|Text"
@@ -2999,9 +2999,9 @@ function UI:CreateWindow(Config)
                 })
                 ToggleV.BackgroundTransparency = Val and 0.12 or 0
                 local properties = {
-                    Position = UDim2.new(0, Val and 33 or 18, 0.5, 0),
+                    Position = UDim2.new(0, Val and 26 or 12, 0.5, 0),
                     BackgroundTransparency = Val and 0 or 0.55,
-                    Size = UDim2.new(0, 15, 0, 15),
+                    Size = UDim2.new(0, 16, 0, 16),
                 }
                 if animate then
                     knobTween = TweenService:Create(ToggleV.Frame,
@@ -3083,46 +3083,17 @@ function UI:CreateWindow(Config)
 
             local ValueFrame = VexUI:Create("Frame", {
                 Parent = SliderElement,
-                AnchorPoint = Vector2.new(0.96, 0.5),
-                Position = UDim2.new(0.96, -68, 0.5, 0),
-                ClipsDescendants = true,
-                BackgroundTransparency = 0.5,
-                Size = UDim2.new(0, 110, 0, 16),
-                BorderSizePixel = 0,
-                ZIndex = 15,
-                ThemeID = {
-                    BackgroundColor3 = "Slider.Placeholder|Placeholder"
-                }
-            }, {
-                VexUI:Create("UICorner", {
-                    CornerRadius = UDim.new(0, 12),
-                }),
-                VexUI:Create("UIStroke", {
-                    LineJoinMode = "Round",
-                    Thickness = 0.6,
-                    ThemeID = {
-                        Color = "Outline"
-                    }
-                }, {
-                    VexUI:Create("UIGradient", {
-                        Color = ColorSequence.new(
-                            Color3.fromRGB(255, 255, 255),
-                            Color3.fromRGB(255, 255, 255)
-                        ),
-                        Transparency = NumberSequence.new({
-                            NumberSequenceKeypoint.new(0, 0.1),
-                            NumberSequenceKeypoint.new(0.5, 1),
-                            NumberSequenceKeypoint.new(1, 1)
-                        }),
-                        Rotation = -100
-                    })
-                }),
-            })
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -80, 0.5, 0),
+                Size = UDim2.new(0, 110, 0, 4),
+                ClipsDescendants = false, BackgroundTransparency = 0.25,
+                ZIndex = 15, ThemeID = {BackgroundColor3 = "Outline"},
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
 
             local DropValue = VexUI:Create("Frame", {
                 Parent = ValueFrame,
                 BorderSizePixel = 0,
-                ClipsDescendants = true,
+                ClipsDescendants = false,
                 BackgroundTransparency = 0,
                 Size = UDim2.new(0, 0, 1, 0),
                 ZIndex = 16,
@@ -3135,48 +3106,26 @@ function UI:CreateWindow(Config)
                 }),
             })
 
+            VexUI:Create("Frame", {
+                Name = "Thumb", Parent = DropValue,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(1, 0, 0.5, 0),
+                Size = UDim2.new(0, 12, 0, 12), ZIndex = 17,
+                ThemeID = {BackgroundColor3 = "Slider.SliderPart|Accent"},
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
+
             local BGFrame = VexUI:Create("Frame", {
-                Parent = SliderElement,
-                AnchorPoint = Vector2.new(0.96, 0.5),
-                Position = UDim2.new(0.96, 0, 0.5, 0),
-                BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-                BackgroundTransparency = 0.5,
-                Size = UDim2.new(0, 58, 0, 24),
-                ClipsDescendants = true,
-                BorderSizePixel = 0,
-                ZIndex = 15,
-                ThemeID = {
-                    BackgroundColor3 = "Slider.Placeholder|Placeholder"
-                }
-            }, {
-                VexUI:Create("UICorner", {
-                    CornerRadius = UDim.new(0, 10),
-                }),
-                VexUI:Create("UIStroke", {
-                    LineJoinMode = "Round",
-                    Thickness = 0.6,
-                    ThemeID = {
-                        Color = "Outline"
-                    }
-                }, {
-                    VexUI:Create("UIGradient", {
-                        Color = ColorSequence.new(
-                            Color3.fromRGB(255, 255, 255),
-                            Color3.fromRGB(255, 255, 255)
-                        ),
-                        Transparency = NumberSequence.new({
-                            NumberSequenceKeypoint.new(0, 0.1),
-                            NumberSequenceKeypoint.new(0.5, 1),
-                            NumberSequenceKeypoint.new(1, 1)
-                        }),
-                        Rotation = -110
-                    })
-                }),
+                Parent = SliderElement, AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -14, 0.5, 0),
+                Size = UDim2.new(0, 54, 0, 24),
+                BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 15,
             })
 
             local SliderTRG = VexUI:Create("TextButton", {
                 Parent = ValueFrame,
-                Size = UDim2.new(1, 0, 1, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, 0, 0.5, 0),
+                Size = UDim2.new(1, 0, 0, 36),
                 BackgroundTransparency = 1,
                 TextTransparency = 1,
                 ZIndex = 25,
@@ -3192,9 +3141,9 @@ function UI:CreateWindow(Config)
                 Text = FormatValue(NormalizeValue(Slider.Value.Default or Slider.Value.Min)),
                 TextColor3 = Color3.fromRGB(255, 255, 255),
                 FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-                TextSize = 10,
+                TextSize = 12,
                 ThemeID = {
-                    TextColor3 = "Slider.Text|Text"
+                    TextColor3 = "Slider.ValueText|Accent"
                 }
             })
 
@@ -3256,7 +3205,7 @@ function UI:CreateWindow(Config)
                     isTouch = (input.UserInputType == Enum.UserInputType.Touch)
                     HoldingSlider = true
 
-                    ScrollFrame.Visible = true
+                    ScrollFrame.Visible = false
                     Utility:TweenObject(ScrollFrame, { BackgroundTransparency = 0.1 }, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
                     Utility:TweenObject(ScrollFrame:FindFirstChildOfClass("TextLabel"), { TextTransparency = 0 }, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
