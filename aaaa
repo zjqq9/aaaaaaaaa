@@ -4812,13 +4812,13 @@ function UI:Notification(Config)
             Name = "VexNotifications", Parent = game:GetService("CoreGui"),
             ResetOnSpawn = false, DisplayOrder = 1000,
         })
-        notificationHost = VexUI:Create("ScrollingFrame", {
+        -- A passive container: transparent space must never capture UI input.
+        notificationHost = VexUI:Create("Frame", {
             Name = "Notifications", Parent = notificationScreen,
             AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 16),
-            Size = UDim2.new(1, -32, 0.45, 0), BackgroundTransparency = 1,
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            ScrollingDirection = Enum.ScrollingDirection.Y,
-            ScrollBarThickness = 0, Active = true, ZIndex = 2000,
+            Size = UDim2.new(1, -32, 0, 0), BackgroundTransparency = 1,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Active = false, Selectable = false, ZIndex = 2000,
         }, {
             VexUI:Create("UISizeConstraint", {MaxSize = Vector2.new(360, 600)}),
             Utility:ListLayout("V", 10), Utility:Padding(3),
@@ -4831,6 +4831,7 @@ function UI:Notification(Config)
         LayoutOrder = notificationOrder, AutomaticSize = Enum.AutomaticSize.Y,
         Size = UDim2.new(1, 0, 0, 0), BorderSizePixel = 0,
         BackgroundTransparency = 0.06, GroupTransparency = 1, ZIndex = 2001,
+        Active = false, Selectable = false,
         ThemeID = {BackgroundColor3 = "ElementColor"},
     }, {
         VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
