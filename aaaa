@@ -3033,6 +3033,82 @@ function UI:CreateWindow(Config)
             Utility:Search(Window, {Title = Togglee.Title, Desc = Togglee.Desc, Icon = "toggle-left",Type = "Toggle", TabTitle = Tab.Title, SelectFn = SelectTab, Frame = Beeee, RightScroll = RightScroll,})
             return Togglee
         end
+        function Tab:Rating(Config)
+            Config = Config or {}
+            local Rating = {
+                Value = math.clamp(math.floor(tonumber(Config.Default) or 0), 0, 5),
+                Locked = Config.Locked or false,
+            }
+            local row, card, inner = Utility:Element(RightScroll, ElementFrame, 84, "Rating")
+            inner.Size = UDim2.new(1, 0, 0, 0)
+            inner.AutomaticSize = Enum.AutomaticSize.Y
+            local title, description = Utility:ElText(inner, Config.Title or "Rate your experience", Config.Desc, "Rating")
+            local stars = VexUI:Create("Frame", {
+                Parent = card, BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(0.5, 1),
+                Position = UDim2.new(0.5, 0, 1, -2),
+                Size = UDim2.new(0, 220, 0, 44), ZIndex = 20,
+            }, {Utility:ListLayout("H", 0)})
+            local buttons = {}
+            local function Paint(value)
+                for index, button in ipairs(buttons) do
+                    button.Text = index <= value and "★" or "☆"
+                    VexUI:AddThemeObject(button, {
+                        TextColor3 = index <= value and "Rating.Active|Accent" or "Rating.Inactive|Muted"
+                    })
+                    button.TextTransparency = index <= value and 0 or 0.25
+                end
+            end
+            function Rating:SetValue(value)
+                self.Value = math.clamp(math.floor(tonumber(value) or 0), 0, 5)
+                Paint(self.Value)
+                if Config.Callback then task.spawn(Config.Callback, self.Value) end
+                return self
+            end
+            function Rating:GetValue() return self.Value end
+            function Rating:Lock() self.Locked = true; Paint(self.Value) end
+            function Rating:UnLock() self.Locked = false end
+            function Rating:SetTitle(value) title.SetText(value) end
+            function Rating:SetDesc(value)
+                description.Frame.Visible = value ~= nil
+                description.SetText(value)
+            end
+            function Rating:Close() row:Destroy() end
+            Rating.Destroy = Rating.Close
+            for index = 1, 5 do
+                local button = VexUI:Create("TextButton", {
+                    Name = "Star" .. index, Parent = stars,
+                    Size = UDim2.new(0, 44, 0, 44), LayoutOrder = index,
+                    BackgroundTransparency = 1, TextTransparency = 0,
+                    Text = "☆", TextSize = 27, Font = Enum.Font.Arial,
+                    ZIndex = 21,
+                })
+                buttons[index] = button
+                button.Activated:Connect(function()
+                    if not Rating.Locked then Rating:SetValue(index) end
+                end)
+                button.MouseEnter:Connect(function()
+                    if not Rating.Locked and not UserInputService.TouchEnabled then Paint(index) end
+                end)
+                button.MouseLeave:Connect(function() Paint(Rating.Value) end)
+            end
+            local function FitRating()
+                local scale = math.max(0.05, Main.UIScale.Scale)
+                row.Size = UDim2.new(0, row.Size.X.Offset, 0,
+                    math.max(84, inner.AbsoluteSize.Y / scale + 64))
+                stars.Size = UDim2.new(0, math.min(220, math.max(0, card.AbsoluteSize.X / scale - 20)), 0, 44)
+                for _, button in ipairs(buttons) do button.Size = UDim2.new(0.2, 0, 1, 0) end
+            end
+            inner:GetPropertyChangedSignal("AbsoluteSize"):Connect(FitRating)
+            card:GetPropertyChangedSignal("AbsoluteSize"):Connect(FitRating)
+            Paint(Rating.Value)
+            FitRating()
+            Utility:Search(Window, {Title = Config.Title or "Rate your experience", Desc = Config.Desc,
+                Icon = "star", Type = "Rating", TabTitle = Tab.Title, SelectFn = SelectTab,
+                Frame = row, RightScroll = RightScroll})
+            return Rating
+        end
+
         function Tab:Slider(Config)
             local Slider = {
                 Title = Config.Title or "Slider",
