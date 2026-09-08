@@ -494,7 +494,7 @@ function LockedElm(Frame, Stat)
     return LockFrame
 end
 
-function Text(parent, text, textProps, children)
+local function LegacyIconText(parent, text, textProps, children)
     local container = VexUI:Create("Frame", {
         BackgroundTransparency = textProps.BackgroundTransparency or 1,
         AutomaticSize = textProps.AutomaticSize or "XY",
@@ -640,6 +640,58 @@ function Text(parent, text, textProps, children)
     }
 end
 
+-- Ordinary UI copy is one persistent native label, not nested auto-sized frames.
+function Text(parent, text, textProps, children)
+    textProps = textProps or {}
+    local rawText = tostring(text or "")
+    local hasIcon = false
+    for token in rawText:gmatch("<([%w_%-]+)>") do
+        if token ~= "b" and token ~= "i" and token ~= "u" and token ~= "s"
+            and token ~= "br" and token ~= "uppercase" and token ~= "smallcaps" then
+            if IconsV2.Icon(token, "lucide") then hasIcon = true break end
+        end
+    end
+    if hasIcon then return LegacyIconText(parent, text, textProps, children) end
+    local size = textProps.Size or UDim2.new()
+    local label = VexUI:Create("TextLabel", {
+        Parent = textProps.Parent or parent,
+        BackgroundTransparency = textProps.BackgroundTransparency or 1,
+        Size = size,
+        AutomaticSize = textProps.AutomaticSize or Enum.AutomaticSize.XY,
+        Position = textProps.Position,
+        LayoutOrder = textProps.LayoutOrder,
+        ZIndex = textProps.ZIndex,
+        Visible = textProps.Visible ~= false,
+        Text = rawText:gsub("\n", "
+"),
+        TextSize = textProps.TextSize or 13,
+        TextScaled = false,
+        TextStrokeTransparency = 1,
+        FontFace = textProps.FontFace or Font.fromEnum(Enum.Font.Arial),
+        TextColor3 = textProps.TextColor3 or Color3.new(1, 1, 1),
+        TextTransparency = textProps.TextTransparency or 0,
+        TextWrapped = textProps.TextWrapped or false,
+        RichText = textProps.RichText or false,
+        TextXAlignment = textProps.TextXAlignment or Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        ThemeID = textProps.ThemeID,
+    }, children)
+    local function setText(value)
+        label.Text = tostring(value or ""):gsub("\n", "
+")
+    end
+    -- Existing controls use both .Frame/.SetText and direct .Text/.Visible access.
+    return setmetatable({
+        Frame = label,
+        SetText = setText,
+        UIPadding = label:FindFirstChildOfClass("UIPadding"),
+    }, {
+        __index = function(_, key) return label[key] end,
+        __newindex = function(_, key, value)
+            if key == "Text" then setText(value) else label[key] = value end
+        end,
+    })
+end
     local UIScreen = VexUI:Create("ScreenGui", {
         Parent = game:GetService("CoreGui"),
         --ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
