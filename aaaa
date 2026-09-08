@@ -662,8 +662,7 @@ function Text(parent, text, textProps, children)
         LayoutOrder = textProps.LayoutOrder,
         ZIndex = textProps.ZIndex,
         Visible = textProps.Visible ~= false,
-        Text = rawText:gsub("\n", "
-"),
+        Text = rawText:gsub("\\n", "\n"),
         TextSize = textProps.TextSize or 13,
         TextScaled = false,
         TextStrokeTransparency = 1,
@@ -677,8 +676,7 @@ function Text(parent, text, textProps, children)
         ThemeID = textProps.ThemeID,
     }, children)
     local function setText(value)
-        label.Text = tostring(value or ""):gsub("\n", "
-")
+        label.Text = tostring(value or ""):gsub("\\n", "\n")
     end
     -- Existing controls use both .Frame/.SetText and direct .Text/.Visible access.
     return setmetatable({
