@@ -5004,8 +5004,28 @@ function UI:CreateWindow(Config)
         query:CaptureFocus()
     end
     HeaderButton("SearchButton", "search", 0, OpenControlSearch).Position = UDim2.new(0,82,0,12)
-    TitleLabel.Position = UDim2.new(0,116,0,8)
-    TitleLabel.Size = UDim2.new(1,-232,0,36)
+    local DiscordButton = HeaderButton("DiscordButton", "message-circle", 0, function()
+        local copy = setclipboard or toclipboard
+        if type(copy) ~= "function" then
+            NotifyAction("Discord", "Clipboard is unavailable on this device.")
+            return
+        end
+        local ok = pcall(copy, "https://discord.gg/4Vq35Jvd3C")
+        NotifyAction("Discord", ok and "Discord invite copied to clipboard" or "Could not copy Discord invite.")
+    end)
+    DiscordButton.Position = UDim2.new(0,114,0,12)
+    -- Use the Discord brand glyph from the existing Geist icon spritesheet.
+    local discordIcon = IconsV2.Icon2("logo-discord", "geist")
+    local discordImage = DiscordButton:FindFirstChildOfClass("ImageLabel")
+    if discordIcon and discordImage then
+        discordImage.Image = discordIcon[1]
+        discordImage.ImageRectOffset = discordIcon[2].ImageRectPosition
+        discordImage.ImageRectSize = discordIcon[2].ImageRectSize
+        discordImage.Position = UDim2.new(0.5,-8,0.5,-8)
+        discordImage.Size = UDim2.fromOffset(16,16)
+    end
+    TitleLabel.Position = UDim2.new(0,148,0,8)
+    TitleLabel.Size = UDim2.new(1,-264,0,36)
 
 
     notificationsReady = true
