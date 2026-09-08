@@ -4812,7 +4812,8 @@ function UI:CreateWindow(Config)
         end
         local function Button(parent, text, pos, size, fn)
             local button = VexUI:Create("TextButton", {Parent = parent, Text = text, Position = pos,
-                Size = size, TextTransparency = 0, TextSize = 12, ZIndex = 1303,
+                Size = size, TextTransparency = 0, TextSize = 13, ZIndex = 1303,
+                FontFace = Font.fromEnum(Enum.Font.GothamMedium),
                 ThemeID = {BackgroundColor3 = "Placeholder", TextColor3 = "Text"}},
                 {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 6)})})
             if text == "Restore" or text == "Done" then
