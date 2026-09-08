@@ -1265,10 +1265,32 @@ function UI:CreateWindow(Config)
         Name = "HeaderAccent", Parent = Main,
         AnchorPoint = Vector2.new(0.5, 0),
         Position = UDim2.new(0.5, 0, 0, Window.Topbar.Height + 7),
-        Size = UDim2.new(0, 64, 0, 2),
+        Size = UDim2.new(0, 0, 0, 2),
         BackgroundTransparency = 0.2, ZIndex = 200,
         ThemeID = {BackgroundColor3 = "Accent"},
     }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
+    do
+        local function fitHeaderAccent()
+            local scale = math.max(0.05, Main.UIScale.Scale)
+            local availableWidth = TitleLabel.AbsoluteSize.X / scale
+            local textWidth = game:GetService("TextService"):GetTextSize(
+                TitleLabel.Text, TitleLabel.TextSize, TitleLabel.Font,
+                Vector2.new(100000, 100000)
+            ).X
+            HeaderAccent.Size = UDim2.new(0, math.min(textWidth, availableWidth), 0, 2)
+            HeaderAccent.Position = UDim2.new(
+                TitleLabel.Position.X.Scale + TitleLabel.Size.X.Scale / 2,
+                TitleLabel.Position.X.Offset + TitleLabel.Size.X.Offset / 2,
+                0, Window.Topbar.Height + 7
+            )
+        end
+        TitleLabel:GetPropertyChangedSignal("Text"):Connect(fitHeaderAccent)
+        TitleLabel:GetPropertyChangedSignal("TextSize"):Connect(fitHeaderAccent)
+        TitleLabel:GetPropertyChangedSignal("Font"):Connect(fitHeaderAccent)
+        TitleLabel:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitHeaderAccent)
+        Main.UIScale:GetPropertyChangedSignal("Scale"):Connect(fitHeaderAccent)
+        fitHeaderAccent()
+    end
     local function HeaderButton(name, icon, offset, callback)
         local button = VexUI:Create("ImageButton", {
             Name = name, Parent = Main, Image = "",
