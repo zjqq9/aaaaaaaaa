@@ -3042,7 +3042,33 @@ function UI:CreateWindow(Config)
                 ZIndex = 25,
             })
             local Title, Desc = Utility:ElText(Inner, Togglee.Title, Togglee.Desc, "Toggle")
-            Inner.Size = UDim2.new(1, -58, 1, 0)
+            -- Measure the text column, then size the row around it. Avoid a
+            -- parent-height/AutomaticSize cycle that clips the description.
+            Beeee.AutomaticSize = Enum.AutomaticSize.None
+            ToggleFrame.AutomaticSize = Enum.AutomaticSize.None
+            ToggleFrame.Size = UDim2.new(1, 0, 1, 0)
+            local cardPadding = ToggleFrame:FindFirstChildOfClass("UIPadding")
+            if cardPadding then
+                cardPadding.PaddingTop = UDim.new(0, 0)
+                cardPadding.PaddingBottom = UDim.new(0, 0)
+            end
+            local textPadding = Inner:FindFirstChildOfClass("UIPadding")
+            if textPadding then textPadding.PaddingTop = UDim.new(0, 0) end
+            Inner.Position = UDim2.new(0, 0, 0, 10)
+            Inner.Size = UDim2.new(1, -64, 0, 0)
+            Inner.AutomaticSize = Enum.AutomaticSize.Y
+            Inner.ClipsDescendants = false
+            Title.Frame.TextYAlignment = Enum.TextYAlignment.Top
+            Desc.Frame.TextYAlignment = Enum.TextYAlignment.Top
+            local function fitToggleText()
+                local scale = math.max(0.05, Main.UIScale.Scale)
+                local height = math.max(Togglee.SizeY,
+                    math.ceil(Inner.AbsoluteSize.Y / scale) + 20)
+                Beeee.Size = UDim2.new(Beeee.Size.X.Scale, Beeee.Size.X.Offset, 0, height)
+            end
+            Inner:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitToggleText)
+            Main.UIScale:GetPropertyChangedSignal("Scale"):Connect(fitToggleText)
+            task.defer(fitToggleText)
 
             local ToggleV = VexUI:Create("Frame", {
                 Parent = ToggleFrame,
