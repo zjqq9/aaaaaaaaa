@@ -1,4 +1,5 @@
 local Utility = {}
+local Text
 local TweenService = game:GetService("TweenService")
 
 function Utility:TweenObject(obj, properties, duration, ...)
@@ -161,7 +162,7 @@ function VexUI:Create(class, properties, children)
     end
 
     for property, Value in next, properties or {} do
-        if property ~= "ThemeID" then
+        if property ~= "ThemeID" and property ~= "Font" and property ~= "FontFace" then
             inst[property] = Value
         end
     end
@@ -171,14 +172,10 @@ function VexUI:Create(class, properties, children)
         inst.FontFace = requestedFontFace
     elseif requestedFont ~= nil then
         inst.Font = requestedFont
-    end
-
-    -- Use one font family for all UI text instead of mixed Gotham aliases.
-    if class == "TextLabel" or class == "TextButton" or class == "TextBox" then
-        local weight = inst.FontFace.Weight
-        local bold = weight == Enum.FontWeight.SemiBold or weight == Enum.FontWeight.Bold
-            or weight == Enum.FontWeight.ExtraBold or weight == Enum.FontWeight.Heavy
-        inst.FontFace = Font.fromEnum(bold and Enum.Font.ArialBold or Enum.Font.Arial)
+    elseif properties.FontFace ~= nil then
+        inst.FontFace = properties.FontFace
+    elseif properties.Font ~= nil then
+        inst.Font = properties.Font
     end
     for _, Child in next, children or {} do
         Child.Parent = inst
@@ -328,7 +325,7 @@ end
 
 function Utility:ElText(parent, title, desc, scope)
     local Title = Text(parent, title, {
-        Size = UDim2.new(1, 0, 0, 5),
+        Size = UDim2.new(1, 0, 0, 20),
         AutomaticSize = "Y",
         ZIndex = 16,
         FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold),
@@ -338,11 +335,11 @@ function Utility:ElText(parent, title, desc, scope)
         TextWrapped = true,
         TextXAlignment = Enum.TextXAlignment.Left,
         ThemeID = { TextColor3 = Utility:T(scope, "Text", "Text") }
-    }, { Utility:Padding({ left = 14 }) })
+    }, { Utility:Padding({ left = 14, right = 8, top = 2, bottom = 2 }) })
     Title.Position = UDim2.new(0, 0, 0, 0)
 
     local Desc = Text(parent, desc, {
-        Size = UDim2.new(1, 0, 0, 5),
+        Size = UDim2.new(1, 0, 0, 18),
         AutomaticSize = "Y",
         ZIndex = 16,
         FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular),
@@ -354,49 +351,52 @@ function Utility:ElText(parent, title, desc, scope)
         TextXAlignment = Enum.TextXAlignment.Left,
         Visible = desc ~= nil,
         ThemeID = { TextColor3 = Utility:T(scope, "Description", "Muted") }
-    }, { Utility:Padding({ left = 14 }) })
+    }, { Utility:Padding({ left = 14, right = 8, top = 2, bottom = 2 }) })
 
     return Title, Desc
 end
 
+-- One-way layout: native text determines the column height; the column determines
+-- the row height. No content node uses a percentage of its auto-sized parent height.
 function Utility:Element(RightScroll, ElementFrame, sizeY, scope)
-    local Beeee = VexUI:Create("Frame", {
-        Parent = RightScroll,
-        BackgroundTransparency = 1,
-        AutomaticSize = "Y",
+    local row = VexUI:Create("Frame", {
+        Name = scope .. "Row", Parent = RightScroll,
+        BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.None,
         Size = UDim2.new(0, ElementFrame.Size.X.Offset - 24, 0, sizeY or 40),
         ZIndex = 15,
     })
-
-    local Card = VexUI:Create("Frame", {
-        Parent = Beeee,
-        AutomaticSize = "Y",
-        ClipsDescendants = true,
-        BackgroundTransparency = 0,
-        Size = UDim2.new(1, 0, 1, 0),
-        BorderSizePixel = 0,
-        ZIndex = 15,
-        ThemeID = { BackgroundColor3 = Utility:T(scope, "Background", "ElementColor") }
+    local card = VexUI:Create("Frame", {
+        Name = "Card", Parent = row, AutomaticSize = Enum.AutomaticSize.None,
+        ClipsDescendants = false, BackgroundTransparency = 0,
+        Size = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0, ZIndex = 15,
+        ThemeID = {BackgroundColor3 = Utility:T(scope, "Background", "ElementColor")},
     }, {
         Utility:GlassStroke(),
-        VexUI:Create("UICorner", {
-            CornerRadius = UDim.new(0, 8),
-        }),
-        Utility:Padding({ top = 6, bottom = 8 }),
+        VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
     })
-
-    local Inner = VexUI:Create("Frame", {
-        Parent = Card,
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 1, 0),
-        ClipsDescendants = true,
-        ZIndex = 16,
-    }, {
-        Utility:ListLayout("V", 3),
-        Utility:Padding({ top = 9 }),
-    })
-
-    return Beeee, Card, Inner
+    local inner = VexUI:Create("Frame", {
+        Name = "TextColumn", Parent = card, BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 8),
+        Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+        ClipsDescendants = false, ZIndex = 16,
+    }, {Utility:ListLayout("V", 2)})
+    local function fitRow()
+        local scale = 1
+        local ancestor = row.Parent
+        while ancestor and ancestor:IsA("GuiObject") do
+            local uiScale = ancestor:FindFirstChildOfClass("UIScale")
+            if uiScale then scale = scale * uiScale.Scale end
+            ancestor = ancestor.Parent
+        end
+        local height = math.ceil(inner.AbsoluteSize.Y / math.max(0.05, scale)) + 16
+        height = math.max(sizeY or 40, height)
+        if row.Size.Y.Offset ~= height then
+            row.Size = UDim2.new(row.Size.X.Scale, row.Size.X.Offset, 0, height)
+        end
+    end
+    inner:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitRow)
+    task.defer(fitRow)
+    return row, card, inner
 end
 
 local IconsV2 = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"))()
@@ -672,7 +672,7 @@ function Text(parent, text, textProps, children)
         TextWrapped = textProps.TextWrapped or false,
         RichText = textProps.RichText or false,
         TextXAlignment = textProps.TextXAlignment or Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Center,
+        TextYAlignment = textProps.TextYAlignment or Enum.TextYAlignment.Top,
         ThemeID = textProps.ThemeID,
     }, children)
     local function setText(value)
@@ -3042,33 +3042,7 @@ function UI:CreateWindow(Config)
                 ZIndex = 25,
             })
             local Title, Desc = Utility:ElText(Inner, Togglee.Title, Togglee.Desc, "Toggle")
-            -- Measure the text column, then size the row around it. Avoid a
-            -- parent-height/AutomaticSize cycle that clips the description.
-            Beeee.AutomaticSize = Enum.AutomaticSize.None
-            ToggleFrame.AutomaticSize = Enum.AutomaticSize.None
-            ToggleFrame.Size = UDim2.new(1, 0, 1, 0)
-            local cardPadding = ToggleFrame:FindFirstChildOfClass("UIPadding")
-            if cardPadding then
-                cardPadding.PaddingTop = UDim.new(0, 0)
-                cardPadding.PaddingBottom = UDim.new(0, 0)
-            end
-            local textPadding = Inner:FindFirstChildOfClass("UIPadding")
-            if textPadding then textPadding.PaddingTop = UDim.new(0, 0) end
-            Inner.Position = UDim2.new(0, 0, 0, 10)
             Inner.Size = UDim2.new(1, -64, 0, 0)
-            Inner.AutomaticSize = Enum.AutomaticSize.Y
-            Inner.ClipsDescendants = false
-            Title.Frame.TextYAlignment = Enum.TextYAlignment.Top
-            Desc.Frame.TextYAlignment = Enum.TextYAlignment.Top
-            local function fitToggleText()
-                local scale = math.max(0.05, Main.UIScale.Scale)
-                local height = math.max(Togglee.SizeY,
-                    math.ceil(Inner.AbsoluteSize.Y / scale) + 20)
-                Beeee.Size = UDim2.new(Beeee.Size.X.Scale, Beeee.Size.X.Offset, 0, height)
-            end
-            Inner:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitToggleText)
-            Main.UIScale:GetPropertyChangedSignal("Scale"):Connect(fitToggleText)
-            task.defer(fitToggleText)
 
             local ToggleV = VexUI:Create("Frame", {
                 Parent = ToggleFrame,
