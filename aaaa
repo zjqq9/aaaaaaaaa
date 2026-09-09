@@ -653,11 +653,19 @@ function Text(parent, text, textProps, children)
     end
     if hasIcon then return LegacyIconText(parent, text, textProps, children) end
     local size = textProps.Size or UDim2.new()
+    local automaticSize = textProps.AutomaticSize or Enum.AutomaticSize.XY
+    -- Wrapped copy must have a fixed available width and grow vertically.
+    -- Growing both axes can produce a narrow label and clipped/misaligned words.
+    if textProps.TextWrapped then
+        automaticSize = Enum.AutomaticSize.Y
+        size = UDim2.new(size.X.Scale > 0 and size.X.Scale or 1,
+            size.X.Offset, 0, math.max(size.Y.Offset, (textProps.TextSize or 13) + 6))
+    end
     local label = VexUI:Create("TextLabel", {
         Parent = textProps.Parent or parent,
         BackgroundTransparency = textProps.BackgroundTransparency or 1,
         Size = size,
-        AutomaticSize = textProps.AutomaticSize or Enum.AutomaticSize.XY,
+        AutomaticSize = automaticSize,
         Position = textProps.Position,
         LayoutOrder = textProps.LayoutOrder,
         ZIndex = textProps.ZIndex,
@@ -675,6 +683,16 @@ function Text(parent, text, textProps, children)
         TextYAlignment = textProps.TextYAlignment or Enum.TextYAlignment.Top,
         ThemeID = textProps.ThemeID,
     }, children)
+    if textProps.TextWrapped then
+        local function fitMinimumLineHeight()
+            local minimum = label.TextSize + 6
+            if label.Size.Y.Offset ~= minimum then
+                label.Size = UDim2.new(label.Size.X.Scale, label.Size.X.Offset, 0, minimum)
+            end
+        end
+        label:GetPropertyChangedSignal("TextSize"):Connect(fitMinimumLineHeight)
+        fitMinimumLineHeight()
+    end
     local function setText(value)
         label.Text = tostring(value or ""):gsub("\\n", "\n")
     end
@@ -2784,7 +2802,7 @@ function UI:CreateWindow(Config)
                 Position = UDim2.new(0, 0, 0, 0),
                 BorderColor3 = Color3.new(0, 0, 0),
                 AutomaticSize = "Y",
-                ClipsDescendants = true,
+                ClipsDescendants = false,
                 BackgroundTransparency = 0,
                 Size = UDim2.new(0, ElementFrame.Size.X.Offset - 24, 0, Paragraph.SizeY),
                 BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -2807,6 +2825,7 @@ function UI:CreateWindow(Config)
                 VexUI:Create("UIPadding", {
                     PaddingTop = UDim.new(0,10),
                     PaddingLeft = UDim.new(0,9),
+                    PaddingRight = UDim.new(0,9),
                     PaddingBottom = UDim.new(0,10)
                 }),
                 VexUI:Create("UIListLayout", {
@@ -2818,14 +2837,14 @@ function UI:CreateWindow(Config)
                     AutomaticSize = Enum.AutomaticSize.Y,
                     Size = UDim2.new(1, 0, 0, 0),
                     LayoutOrder = 2,
-                    ClipsDescendants = true,
+                    ClipsDescendants = false,
                     ZIndex = 16,
                 },{
                     VexUI:Create("Frame", {
                         BackgroundTransparency = 1,
                         AutomaticSize = Enum.AutomaticSize.Y,
                         Size = UDim2.new(1, 0, 0, 0),
-                        ClipsDescendants = true,
+                        ClipsDescendants = false,
                         ZIndex = 16,
                     },{
                         VexUI:Create("UIListLayout", {
@@ -2864,8 +2883,8 @@ function UI:CreateWindow(Config)
             end
 
             local Title = Text(ParagraphFrame.Frame.Frame, Paragraph.Title, {
-                Size = UDim2.new(0, 0, 0, 5),
-                AutomaticSize = "XY",
+                Size = UDim2.new(1, 0, 0, 20),
+                AutomaticSize = "Y",
                 ZIndex = 16,
                 FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
                 TextSize = 13,
@@ -2883,8 +2902,8 @@ function UI:CreateWindow(Config)
             })
             Title.Position = UDim2.new(0, 0, 0, 0)
             local Desc = Text(ParagraphFrame.Frame.Frame, Paragraph.Desc, {
-                Size = UDim2.new(0, 0, 0, 5),
-                AutomaticSize = "XY",
+                Size = UDim2.new(1, 0, 0, 20),
+                AutomaticSize = "Y",
                 ZIndex = 16,
                 FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
                 TextSize = 12,
@@ -2964,6 +2983,7 @@ function UI:CreateWindow(Config)
                 ZIndex = 25,
             })
             local Title, Desc = Utility:ElText(Inner, Button.Title, Button.Desc, "Button")
+            if Button.Icon then Inner.Size = UDim2.new(1, -36, 0, 0) end
 
             local Icon
             if Button.Icon then
@@ -3605,6 +3625,32 @@ function UI:CreateWindow(Config)
                 }),
             })
 
+            -- Use the same vertical text flow as other controls, reserving the
+            -- right-hand value selector instead of placing it over the title.
+            do
+                local column = DropFrame.Frame
+                column.Position = UDim2.new(0, 0, 0, 8)
+                column.Size = UDim2.new(1, -140, 0, 0)
+                column.AutomaticSize = Enum.AutomaticSize.Y
+                column.ClipsDescendants = false
+                local padding = column:FindFirstChildOfClass("UIPadding")
+                if padding then padding.PaddingTop = UDim.new(0, 0) end
+                Title.Frame.Size = UDim2.new(1, 0, 0, Title.Frame.TextSize + 6)
+                Desc.Frame.Parent = column
+                Desc.Frame.Position = UDim2.new()
+                Desc.Frame.Size = UDim2.new(1, 0, 0, Desc.Frame.TextSize + 6)
+                Desc.Frame.Visible = Dropdown.Desc ~= nil
+                Title.Frame.LayoutOrder, Desc.Frame.LayoutOrder = 1, 2
+                local function fitDropdownText()
+                    local scale = math.max(0.05, Main.UIScale.Scale)
+                    DropFrame.Size = UDim2.new(1, 0, 0,
+                        math.max(40, math.ceil(column.AbsoluteSize.Y / scale) + 16))
+                end
+                column:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitDropdownText)
+                Main.UIScale:GetPropertyChangedSignal("Scale"):Connect(fitDropdownText)
+                task.defer(fitDropdownText)
+            end
+
             local DropValueFrame = VexUI:Create("Frame", {
                 Parent = DropFrame,
                 AnchorPoint = Vector2.new(1, 0.5),
@@ -3930,6 +3976,7 @@ function UI:CreateWindow(Config)
             }
             local Beeee, InputElement, Inner = Utility:Element(RightScroll, ElementFrame, Input.SizeY, "Input")
             local Title, Desc = Utility:ElText(Inner, Input.Title, Input.Desc, "Button")
+            Inner.Size = UDim2.new(1, -150, 0, 0)
             
             local InputFrame = VexUI:Create("Frame", {
                 Parent = InputElement,
@@ -4082,6 +4129,7 @@ function UI:CreateWindow(Config)
             }
             local Beeee, KeybindElement, Inner = Utility:Element(RightScroll, ElementFrame, Keybind.SizeY, "Keybind")
             local Title, Desc = Utility:ElText(Inner, Keybind.Title, Keybind.Desc, "Keybind")
+            Inner.Size = UDim2.new(1, -54, 0, 0)
 
             local KeyFrame = VexUI:Create("TextButton", {
                 Parent = KeybindElement,
