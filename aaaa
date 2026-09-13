@@ -2419,7 +2419,7 @@ function UI:CreateWindow(Config)
             Size = UDim2.new(0, 25, 0, 25),
             ZIndex = 11,
             Image = (function()
-                return game:GetService("Players"):GetUserThumbnailAsync(Window.User.Anonymous and 1 or game.Players.LocalPlayer.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150)
+                return game:GetService("Players"):GetUserThumbnailAsync(Window.User.Anonymous and 1 or game:GetService("Players").LocalPlayer.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150)
             end)(),
         },{
             VexUI:Create("UICorner", {
@@ -2446,7 +2446,7 @@ function UI:CreateWindow(Config)
         RichText = true,
         Size = UDim2.new(1, 0, 1, 0),
         FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-        Text = Window.User.Anonymous and "Anonymous" or game.Players.LocalPlayer.DisplayName,
+        Text = Window.User.Anonymous and "Anonymous" or game:GetService("Players").LocalPlayer.DisplayName,
         TextTransparency = 0,
         TextSize = 13,
         ZIndex = 11,
@@ -2469,7 +2469,7 @@ function UI:CreateWindow(Config)
         RichText = true,
         Size = UDim2.new(1, 0, 1, 0),
         FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-        Text = Window.User.Anonymous and "@Anonymous" or "@"..game.Players.LocalPlayer.Name,
+        Text = Window.User.Anonymous and "@Anonymous" or "@"..game:GetService("Players").LocalPlayer.Name,
         TextTransparency = 0.35,
         TextSize = 13,
         ZIndex = 11,
@@ -2511,7 +2511,7 @@ function UI:CreateWindow(Config)
             Padding = UDim.new(0, 7)
         }),
         VexUI:Create("UIPadding", {
-            PaddingLeft = UDim.new(0, 5),
+            PaddingLeft = UDim.new(0, 16),
             PaddingRight = UDim.new(0, 5),
             PaddingBottom = UDim.new(0, 20),
             --PaddingTop = UDim.new(0, 10),
@@ -2553,7 +2553,7 @@ function UI:CreateWindow(Config)
             AutomaticSize = "None",
             BorderColor3 = Color3.new(0, 0, 0),
             BackgroundTransparency = Tab.Border and 0.6 or 1,
-            Size = UDim2.new(0, Window.SideBarWidth - 10, 0, UserInputService.TouchEnabled and 44 or 38),
+            Size = UDim2.new(0, Window.SideBarWidth - 26, 0, UserInputService.TouchEnabled and 44 or 38),
             BackgroundColor3 = Color3.fromRGB(0, 0, 0),
             BorderSizePixel = 0,
             ZIndex = 4,
@@ -2577,23 +2577,11 @@ function UI:CreateWindow(Config)
             VexUI:Create("UIStroke", {
                 Color = Color3.fromRGB(255, 255, 255),
                 LineJoinMode = "Round",
-                Thickness = 0.6,
+                Thickness = 1,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
                 ThemeID = {
                     Color = "Outline"
                 }
-            },{
-                VexUI:Create("UIGradient", {
-                    Color = ColorSequence.new(
-                        Color3.fromRGB(255, 255, 255), 
-                        Color3.fromRGB(255, 255, 255)
-                    ),
-                    Transparency = NumberSequence.new({
-                        NumberSequenceKeypoint.new(0, 0.1),
-                        NumberSequenceKeypoint.new(0.5, 1),
-                        NumberSequenceKeypoint.new(1, 1)
-                    }),
-                    Rotation = -110
-                })
             }),
             VexUI:Create("UIPadding", {
                 PaddingBottom = UDim.new(0, 5),
@@ -2653,8 +2641,8 @@ function UI:CreateWindow(Config)
         
         local ActiveRail = VexUI:Create("Frame", {
             Name = "ActiveRail", Parent = TabBack,
-            Position = UDim2.new(0, 5, 0.5, -7),
-            Size = UDim2.new(0, 2, 0, 14),
+            Position = UDim2.new(0, -9, 0.5, -8),
+            Size = UDim2.new(0, 3, 0, 16),
             BackgroundTransparency = 1, ZIndex = 7,
             ThemeID = { BackgroundColor3 = "Accent" },
         }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
@@ -2733,9 +2721,9 @@ function UI:CreateWindow(Config)
                     end
                 end
             end
-            Utility:TweenObject(TabBack, {BackgroundTransparency = 1}, 0.18)
+            Utility:TweenObject(TabBack, {BackgroundTransparency = 0.35}, 0.18)
             Utility:TweenObject(ActiveRail, {BackgroundTransparency = 0}, 0.18)
-            Utility:TweenObject(TabBack.UIStroke, {Transparency = 1}, 0.2)
+            Utility:TweenObject(TabBack.UIStroke, {Transparency = 0.35}, 0.2)
             VexUI:AddThemeObject(TabTitle, {TextColor3 = "Tab.ActiveText|Accent"})
             Utility:TweenObject(TabTitle, {TextTransparency = 0}, 0.2)
             if TabIcon then
@@ -4327,10 +4315,10 @@ function UI:CreateWindow(Config)
             LeftScroll.Size = UDim2.new(1, 0, 1, Value and -64 or -16)
         end
         function Window:Anonymous(Value)
-            UserTitle.Text = Value and "Anonymous" or game.Players.LocalPlayer.DisplayName
-            UserSub.Text = Value and "@Anonymous" or "@"..game.Players.LocalPlayer.Name
+            UserTitle.Text = Value and "Anonymous" or game:GetService("Players").LocalPlayer.DisplayName
+            UserSub.Text = Value and "@Anonymous" or "@"..game:GetService("Players").LocalPlayer.Name
             UserFrame.ImageLabel.Image = (function()
-                return game:GetService("Players"):GetUserThumbnailAsync(Value and 1 or game.Players.LocalPlayer.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150)
+                return game:GetService("Players"):GetUserThumbnailAsync(Value and 1 or game:GetService("Players").LocalPlayer.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size150x150)
             end)()
         end
         function Tab:Group(Config)
