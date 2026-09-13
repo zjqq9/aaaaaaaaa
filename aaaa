@@ -420,6 +420,7 @@ local function GetIcon(icon)
 end
 
 local UserInputService = game:GetService("UserInputService")
+local HoldingSlider = false
 
 local function enableDragging(frame)
     if game:GetService("UserInputService").TouchEnabled then return end
@@ -445,6 +446,7 @@ local function enableDragging(frame)
     end)
 
     UserInputService.InputChanged:Connect(function(input)
+        if dragging and HoldingSlider then dragging = false end
         if dragging then
             if input.UserInputType == Enum.UserInputType.MouseMovement
             or input.UserInputType == Enum.UserInputType.Touch then
@@ -3245,246 +3247,260 @@ function UI:CreateWindow(Config)
         end
 
         function Tab:Slider(Config)
+            Config = Config or {}
+            local function Finite(value, fallback)
+                value = tonumber(value)
+                if not value or value ~= value or math.abs(value) == math.huge then return fallback end
+                return value
+            end
+            local range = Config.Value or {}
+            local function ValidStep(value, fallback)
+                value = Finite(value, fallback)
+                return value > 0 and math.max(0.0000000001, value) or fallback
+            end
+            local minimum = Finite(range.Min, 0)
+            local maximum = math.max(minimum, Finite(range.Max, 100))
             local Slider = {
-                Title = Config.Title or "Slider",
-                Desc = Config.Desc or nil,
-                Locked = Config.Locked or false,
-                Step = Config.Step or 1,
-                Value = Config.Value or { Min = 0, Max = 100, Default = 50 },
+                Title = Config.Title or "Slider", Desc = Config.Desc,
+                Locked = Config.Locked == true,
+                Step = ValidStep(Config.Step, 1),
+                Value = {Min = minimum, Max = maximum, Default = Finite(range.Default, minimum)},
                 Callback = Config.Callback or function() end,
-                Locked = Config.Locked,
-                SizeY = Config.SizeY or 40,
+                SizeY = math.max(0, Finite(Config.SizeY, 0)),
             }
-            -- Never expose binary floating-point tails in the displayed value.
             local function FormatValue(value)
                 local text = string.format("%.10f", value):gsub("0+$", ""):gsub("%.$", "")
                 return text == "-0" and "0" or text
             end
             local function NormalizeValue(value)
-                local minimum, maximum = Slider.Value.Min, Slider.Value.Max
-                local step = tonumber(Slider.Step) or 1
-                if step <= 0 or step ~= step or step == math.huge then step = 1 end
-                local clamped = math.clamp(value, minimum, maximum)
-                local snapped = math.round(clamped / step) * step
-                return tonumber(FormatValue(math.clamp(snapped, minimum, maximum)))
+                local min, max = Slider.Value.Min, Slider.Value.Max
+                local clamped = math.clamp(Finite(value, min), min, max)
+                -- Preserve both endpoints even when the range is not a multiple of Step.
+                if clamped == min or clamped == max then return clamped end
+                local snapped = math.round(clamped / Slider.Step) * Slider.Step
+                return math.clamp(tonumber(FormatValue(snapped)), min, max)
             end
-            local function ValueRatio(value)
+            local function Ratio(value)
                 local span = Slider.Value.Max - Slider.Value.Min
                 return span > 0 and math.clamp((value - Slider.Value.Min) / span, 0, 1) or 0
             end
-            local Beeee, SliderElement, Inner = Utility:Element(RightScroll, ElementFrame, Slider.SizeY, "Slider")
-            Inner.Size = UDim2.new(1, -182, 0, 0)
-            Inner.AutomaticSize = Enum.AutomaticSize.Y
-            local Title, Desc = Utility:ElText(Inner, Slider.Title, Slider.Desc, "Slider")
-
-            local function SizeCard()
-                local scale = math.max(0.05, Main.UIScale.Scale)
-                Beeee.Size = UDim2.new(0, Beeee.Size.X.Offset, 0,
-                    math.max(Slider.SizeY, Inner.AbsoluteSize.Y / scale + 14))
-            end
-            Inner:GetPropertyChangedSignal("AbsoluteSize"):Connect(SizeCard)
-            SizeCard()
-
-            local ValueFrame = VexUI:Create("Frame", {
-                Parent = SliderElement,
-                AnchorPoint = Vector2.new(1, 0.5),
-                Position = UDim2.new(1, -72, 0.5, 0),
-                Size = UDim2.new(0, 96, 0, 4),
-                ClipsDescendants = false, BackgroundTransparency = 0.25,
-                ZIndex = 15, ThemeID = {BackgroundColor3 = "Outline"},
-            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
-
-            local DropValue = VexUI:Create("Frame", {
-                Parent = ValueFrame,
-                BorderSizePixel = 0,
-                ClipsDescendants = false,
-                BackgroundTransparency = 0,
-                Size = UDim2.new(0, 0, 1, 0),
-                ZIndex = 16,
-                ThemeID = {
-                    BackgroundColor3 = "Slider.SliderPart|Accent"
-                }
-            }, {
-                VexUI:Create("UICorner", {
-                    CornerRadius = UDim.new(0, 12),
-                }),
+            -- This row owns its layout; it does not compete with Utility:Element's fitter.
+            local row = VexUI:Create("Frame", {
+                Name = "SliderRow", Parent = RightScroll, BackgroundTransparency = 1,
+                Size = UDim2.new(0, ElementFrame.Size.X.Offset - 24, 0, 64), ZIndex = 15,
             })
-
-            VexUI:Create("Frame", {
-                Name = "Thumb", Parent = DropValue,
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                Position = UDim2.new(1, 0, 0.5, 0),
-                Size = UDim2.new(0, 10, 0, 10), ZIndex = 17,
+            local card = VexUI:Create("Frame", {
+                Name = "Card", Parent = row, Size = UDim2.new(1, 0, 1, 0), ZIndex = 15,
+                ClipsDescendants = false, ThemeID = {BackgroundColor3 = "Slider.Background|ElementColor"},
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 8)}), Utility:GlassStroke()})
+            local textColumn = VexUI:Create("Frame", {
+                Name = "TextColumn", Parent = card, Position = UDim2.new(0, 0, 0, 8),
+                Size = UDim2.new(1, -82, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1, ZIndex = 16,
+            }, {Utility:ListLayout("V", 2)})
+            local title, description = Utility:ElText(textColumn, Slider.Title, Slider.Desc, "Slider")
+            local valueBox = VexUI:Create("TextBox", {
+                Name = "Value", Parent = card, AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(1, -12, 0, 8), Size = UDim2.new(0, 64, 0, 26),
+                Text = "", TextSize = 12, Font = Enum.Font.GothamMedium,
+                ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Center,
+                BackgroundTransparency = 0.35, BorderSizePixel = 0, ZIndex = 20,
+                ThemeID = {BackgroundColor3 = "Slider.Placeholder|Placeholder", TextColor3 = "Slider.ValueText|Accent"},
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 5)})})
+            local hit = VexUI:Create("TextButton", {
+                Name = "SliderHit", Parent = card, Position = UDim2.new(0, 8, 0, 34),
+                Size = UDim2.new(1, -16, 0, 30), Text = "", TextTransparency = 1,
+                BackgroundTransparency = 1, Active = true, ZIndex = 22,
+            })
+            local rail = VexUI:Create("Frame", {
+                Name = "Track", Parent = hit, AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, 9, 0.5, 0), Size = UDim2.new(1, -18, 0, 4),
+                BackgroundTransparency = 0.25, Active = false, ZIndex = 23,
+                ThemeID = {BackgroundColor3 = "Slider.Track|Outline"},
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
+            local fill = VexUI:Create("Frame", {
+                Name = "Fill", Parent = rail, Size = UDim2.new(0, 0, 1, 0), Active = false, ZIndex = 24,
                 ThemeID = {BackgroundColor3 = "Slider.SliderPart|Accent"},
             }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
+            local thumb = VexUI:Create("Frame", {
+                Name = "Thumb", Parent = rail, AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(0, 12, 0, 12),
+                Active = false, ZIndex = 25, ThemeID = {BackgroundColor3 = "Text"},
+            }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
+                VexUI:Create("UIStroke", {Thickness = 2, Transparency = 0.1,
+                    ThemeID = {Color = "Slider.SliderPart|Accent"}})})
 
-            local BGFrame = VexUI:Create("Frame", {
-                Parent = SliderElement, AnchorPoint = Vector2.new(1, 0.5),
-                Position = UDim2.new(1, -14, 0.5, 0),
-                Size = UDim2.new(0, 54, 0, 24),
-                BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 15,
-            })
-
-            local SliderTRG = VexUI:Create("TextButton", {
-                Parent = ValueFrame,
-                AnchorPoint = Vector2.new(0, 0.5),
-                Position = UDim2.new(0, 0, 0.5, 0),
-                Size = UDim2.new(1, 0, 0, 44),
-                BackgroundTransparency = 1,
-                TextTransparency = 1,
-                ZIndex = 25,
-            })
-
-            local BGBox = VexUI:Create("TextLabel", {
-                Parent = BGFrame,
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                Position = UDim2.new(0.5, 0, 0.5, 0),
-                BackgroundTransparency = 1,
-                ZIndex = 16,
-                Size = UDim2.new(1, 0, 1, 0),
-                Text = FormatValue(NormalizeValue(Slider.Value.Default or Slider.Value.Min)),
-                TextColor3 = Color3.fromRGB(255, 255, 255),
-                FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-                TextSize = 12,
-                ThemeID = {
-                    TextColor3 = "Slider.ValueText|Accent"
-                }
-            })
-
-            local ScrollFrame = VexUI:Create("Frame", {
-                Parent = DropValue,
-                AnchorPoint = Vector2.new(0, 1),
-                Position = UDim2.new(0, 0, -1.5, -5),
-                BackgroundTransparency = 1,
-                Size = UDim2.new(0, 35, 0, 20),
-                ClipsDescendants = true,
-                Visible = false,
-                ZIndex = 30,
-                ThemeID = {
-                    BackgroundColor3 = "Slider.Placeholder|Placeholder"
-                }
-            }, {
-                VexUI:Create("UICorner", {
-                    CornerRadius = UDim.new(0, 6),
-                }),
-                VexUI:Create("TextLabel", {
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 1, 0),
-                    TextColor3 = Color3.fromRGB(255, 255, 255),
-                    TextTransparency = 1,
-                    TextSize = 11,
-                    ZIndex = 31,
-                    FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-                    ThemeID = {
-                        TextColor3 = "Slider.Text|Text"
-                    }
-                }),
-            })
-
-            function Slider:Lock()
-                Slider.Locked = true
-                LockedElm(Beeee,true)
+            local value = NormalizeValue(Slider.Value.Default)
+            local destroyed, editing = false, false
+            local inputOwner, phase, touchStart, startValue
+            local scrollWasEnabled, movedConnection, endedConnection
+            local renderSize = 12
+            local function Paint()
+                local fraction = Ratio(value)
+                fill.Size = UDim2.new(fraction, 0, 1, 0)
+                thumb.Position = UDim2.new(fraction, 0, 0.5, 0)
+                thumb.Size = UDim2.fromOffset(renderSize, renderSize)
+                fill.BackgroundTransparency = Slider.Locked and 0.55 or 0
+                thumb.BackgroundTransparency = Slider.Locked and 0.5 or 0
+                valueBox.TextEditable = not Slider.Locked
+                valueBox.TextTransparency = Slider.Locked and 0.5 or 0
+                if not editing then valueBox.Text = FormatValue(value) end
             end
-            function Slider:UnLock()
-                Slider.Locked = false
-                LockedElm(Beeee,false)
+            local function Set(valueToSet, forceCallback)
+                local nextValue = NormalizeValue(valueToSet)
+                local changed = nextValue ~= value
+                value = nextValue
+                Paint()
+                if changed or forceCallback then task.spawn(Slider.Callback, value) end
             end
-            if Slider.Locked then
-                Slider:Lock()
+            local function StopDrag(notify)
+                if not inputOwner then return end
+                local wasDragging = phase == "dragging"
+                inputOwner, phase = nil, nil
+                if movedConnection then movedConnection:Disconnect(); movedConnection = nil end
+                if endedConnection then endedConnection:Disconnect(); endedConnection = nil end
+                if wasDragging then
+                    HoldingSlider = false
+                    if RightScroll.Parent then RightScroll.ScrollingEnabled = scrollWasEnabled end
+                end
+                renderSize = 12
+                if not destroyed then Paint() end
+                if notify and value ~= startValue then NotifyAction(Slider.Title, FormatValue(value)) end
             end
-
-            local Value = NormalizeValue(Slider.Value.Default or Slider.Value.Min)
-            DropValue.Size = UDim2.new(ValueRatio(Value), 0, 1, 0)
-            local dragInput, moveConnection, endConnection
-            local previousScrolling
-            local dragStartValue
-            local function StopDrag()
-                if not dragInput then return end
-                dragInput = nil
-                HoldingSlider = false
-                if Value ~= dragStartValue then NotifyAction(Slider.Title, FormatValue(Value)) end
-                if moveConnection then moveConnection:Disconnect(); moveConnection = nil end
-                if endConnection then endConnection:Disconnect(); endConnection = nil end
-                if RightScroll.Parent then RightScroll.ScrollingEnabled = previousScrolling end
+            local function CanUse()
+                return not destroyed and not Slider.Locked and Window.IslandOpen and Main.Visible and ElementFrame.Visible
             end
             local function MoveTo(position)
-                if Slider.Locked or not Window.IslandOpen then StopDrag(); return end
-                local ratio = math.clamp((position.X - ValueFrame.AbsolutePosition.X)
-                    / math.max(1, ValueFrame.AbsoluteSize.X), 0, 1)
-                local nextValue = NormalizeValue(Slider.Value.Min + ratio * (Slider.Value.Max - Slider.Value.Min))
-                -- Track the finger directly; repeated tweens made dragging lag behind.
-                DropValue.Size = UDim2.new(ValueRatio(nextValue), 0, 1, 0)
-                BGBox.Text = FormatValue(nextValue)
-                if nextValue ~= Value then
-                    Value = nextValue
-                    task.spawn(Slider.Callback, nextValue)
-                end
+                if not CanUse() then StopDrag(false); return end
+                local fraction = math.clamp((position.X - rail.AbsolutePosition.X) / math.max(1, rail.AbsoluteSize.X), 0, 1)
+                Set(Slider.Value.Min + fraction * (Slider.Value.Max - Slider.Value.Min), false)
             end
-            SliderTRG.InputBegan:Connect(function(input)
-                if Slider.Locked or HoldingSlider then return end
+            local function ClaimDrag()
+                if HoldingSlider or not CanUse() then StopDrag(false); return false end
+                phase = "dragging"
+                HoldingSlider = true
+                scrollWasEnabled = RightScroll.ScrollingEnabled
+                RightScroll.ScrollingEnabled = false
+                renderSize = 14
+                Paint()
+                return true
+            end
+            hit.InputBegan:Connect(function(input)
+                if inputOwner or HoldingSlider or editing or not CanUse() then return end
                 local touch = input.UserInputType == Enum.UserInputType.Touch
                 if not touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-                dragInput = input
-                dragStartValue = Value
-                HoldingSlider = true
-                previousScrolling = RightScroll.ScrollingEnabled
-                RightScroll.ScrollingEnabled = false
-                MoveTo(input.Position)
-                moveConnection = UserInputService.InputChanged:Connect(function(changed)
-                    if (touch and changed == dragInput)
-                        or (not touch and changed.UserInputType == Enum.UserInputType.MouseMovement) then
-                        MoveTo(changed.Position)
+                inputOwner, phase = input, "pending"
+                touchStart, startValue = input.Position, value
+                if not touch then
+                    if not ClaimDrag() then return end
+                    MoveTo(input.Position)
+                end
+                if not inputOwner then return end
+                movedConnection = UserInputService.InputChanged:Connect(function(changed)
+                    if not inputOwner then return end
+                    if touch and changed ~= inputOwner then return end
+                    if not touch and changed.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+                    if phase == "pending" then
+                        local delta = changed.Position - touchStart
+                        if math.abs(delta.Y) > 6 and math.abs(delta.Y) >= math.abs(delta.X) then
+                            StopDrag(false) -- A vertical swipe belongs to the page.
+                            return
+                        end
+                        if math.abs(delta.X) <= 6 then return end
+                        if not ClaimDrag() then return end
                     end
+                    MoveTo(changed.Position)
                 end)
-                endConnection = UserInputService.InputEnded:Connect(function(ended)
-                    if ended == dragInput or (not touch and ended.UserInputType == Enum.UserInputType.MouseButton1) then
-                        StopDrag()
+                endedConnection = UserInputService.InputEnded:Connect(function(ended)
+                    if not inputOwner then return end
+                    if touch and ended ~= inputOwner then return end
+                    if not touch and ended.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                    if phase == "pending" then
+                        local delta = ended.Position - touchStart
+                        if math.abs(delta.Y) <= 6 and math.abs(delta.X) <= 6 and ClaimDrag() then MoveTo(ended.Position) end
+                    elseif phase == "dragging" then
+                        MoveTo(ended.Position)
                     end
+                    StopDrag(true)
                 end)
             end)
-            local focusConnection = UserInputService.WindowFocusReleased:Connect(StopDrag)
-            local visibilityConnection = Main:GetPropertyChangedSignal("Visible"):Connect(function()
-                if not Main.Visible then StopDrag() end
+            valueBox.Focused:Connect(function()
+                if Slider.Locked then valueBox:ReleaseFocus(); return end
+                StopDrag(false)
+                editing = true
             end)
-            local pageConnection = ElementFrame:GetPropertyChangedSignal("Visible"):Connect(function()
-                if not ElementFrame.Visible then StopDrag() end
+            valueBox.FocusLost:Connect(function()
+                if destroyed then return end
+                editing = false
+                local previous = value
+                local entered = Finite(valueBox.Text, nil)
+                if not Slider.Locked and entered then Set(entered, false) else Paint() end
+                if value ~= previous then NotifyAction(Slider.Title, FormatValue(value)) end
             end)
-            Beeee.Destroying:Once(function()
-                StopDrag()
-                focusConnection:Disconnect()
-                visibilityConnection:Disconnect()
-                pageConnection:Disconnect()
+            local function Layout()
+                if destroyed then return end
+                local scale = math.max(0.05, Main.UIScale.Scale)
+                local touch = UserInputService.TouchEnabled
+                local targetHeight = touch and math.max(34, math.ceil(32 / scale)) or 28
+                local headerHeight = math.max(24, math.ceil(textColumn.AbsoluteSize.Y / scale))
+                local height = math.max(Slider.SizeY, 8 + headerHeight + targetHeight + 4)
+                if row.Size.Y.Offset ~= height then row.Size = UDim2.new(row.Size.X.Scale, row.Size.X.Offset, 0, height) end
+                hit.Position = UDim2.new(0, 8, 0, height - targetHeight - 4)
+                hit.Size = UDim2.new(1, -16, 0, targetHeight)
+            end
+            local connections = {
+                textColumn:GetPropertyChangedSignal("AbsoluteSize"):Connect(Layout),
+                Main.UIScale:GetPropertyChangedSignal("Scale"):Connect(Layout),
+                UserInputService:GetPropertyChangedSignal("TouchEnabled"):Connect(Layout),
+                UserInputService.WindowFocusReleased:Connect(function() StopDrag(false) end),
+                Main:GetPropertyChangedSignal("Visible"):Connect(function() if not Main.Visible then StopDrag(false) end end),
+                Main.Frame:GetPropertyChangedSignal("Visible"):Connect(function() if not Main.Frame.Visible then StopDrag(false) end end),
+                ElementFrame:GetPropertyChangedSignal("Visible"):Connect(function() if not ElementFrame.Visible then StopDrag(false) end end),
+            }
+            row.Destroying:Once(function()
+                destroyed = true
+                StopDrag(false)
+                for _, connection in ipairs(connections) do connection:Disconnect() end
             end)
-
-            function Slider:SetValue(val)
-                local rounded = NormalizeValue(val)
-                Value = rounded
-                BGBox.Text = FormatValue(rounded)
-                ScrollFrame:FindFirstChildOfClass("TextLabel").Text = FormatValue(rounded)
-                Utility:TweenObject(DropValue, {Size = UDim2.new(ValueRatio(rounded),0, 1, 0)}, 0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-                task.spawn(Slider.Callback, rounded)
+            function Slider:SetValue(newValue) Set(newValue, true); return self end
+            function Slider:GetValue() return value end
+            function Slider:SetTitle(newTitle)
+                self.Title = tostring(newTitle); title.SetText(self.Title); return self
             end
-
-            function Slider:SetDesc(val)
-                Desc.Frame.Visible = true
-                Desc.SetText(val)
+            function Slider:SetDesc(newDesc)
+                self.Desc = newDesc
+                description.Frame.Visible = newDesc ~= nil and newDesc ~= ""
+                description.SetText(newDesc); return self
             end
-            function Slider:SetMax(val)
-                Slider.Value.Max = val
+            function Slider:SetMax(newMax)
+                StopDrag(false)
+                self.Value.Max = math.max(self.Value.Min, Finite(newMax, self.Value.Max))
+                Set(value, false); return self
             end
-            function Slider:SetMin(val)
-                Slider.Value.Min = val
+            function Slider:SetMin(newMin)
+                StopDrag(false)
+                self.Value.Min = math.min(self.Value.Max, Finite(newMin, self.Value.Min))
+                Set(value, false); return self
             end
-            function Slider:SetStep(val)
-                Slider.Step = val
-                self:SetValue(Value)
+            function Slider:SetStep(newStep)
+                StopDrag(false)
+                self.Step = ValidStep(newStep, self.Step)
+                Set(value, false); return self
             end
-            function Slider:Close()
-                Beeee:Destroy()
+            function Slider:Lock()
+                self.Locked = true; StopDrag(false); valueBox:ReleaseFocus(); Paint(); return self
             end
-            Utility:Search(Window, {Title = Slider.Title, Desc = Slider.Desc, Icon = "settings-2",Type = "Slider", TabTitle = Tab.Title, SelectFn = SelectTab, Frame = Beeee, RightScroll = RightScroll,})
+            function Slider:UnLock() self.Locked = false; Paint(); return self end
+            function Slider:Close() row:Destroy() end
+            Slider.Destroy = Slider.Close
+            Paint()
+            Layout()
+            Utility:Search(Window, {Title = Slider.Title, Desc = Slider.Desc, Icon = "settings-2", Type = "Slider",
+                TabTitle = Tab.Title, SelectFn = SelectTab, Frame = row, RightScroll = RightScroll})
             return Slider
         end
+
+
         function Tab:Dropdown(Config)
             local Dropdown = {
                 Title = Config.Title or "Dropdown",
