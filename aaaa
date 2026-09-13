@@ -2639,14 +2639,6 @@ function UI:CreateWindow(Config)
             TabIcon.ImageTransparency = 0.3
         end
         
-        local ActiveRail = VexUI:Create("Frame", {
-            Name = "ActiveRail", Parent = TabBack,
-            Position = UDim2.new(0, -9, 0.5, -8),
-            Size = UDim2.new(0, 3, 0, 16),
-            BackgroundTransparency = 1, ZIndex = 7,
-            ThemeID = { BackgroundColor3 = "Accent" },
-        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 1)})})
-
         local ElementFrame = VexUI:Create("Frame", {
             Parent = ElementFolder,
             AnchorPoint = Vector2.new(1, 0),
@@ -2708,8 +2700,6 @@ function UI:CreateWindow(Config)
             Utility:TweenObject(ElementFrame, {BackgroundTransparency = 1}, 0.2)
             for _, v in next, Window.Tabs do
                 Utility:TweenObject(v, {BackgroundTransparency = 1}, 0.2)
-                local rail = v:FindFirstChild("ActiveRail")
-                if rail then Utility:TweenObject(rail, {BackgroundTransparency = 1}, 0.15) end
                 for _, obj in ipairs(v:GetChildren()) do
                     if obj:IsA("TextLabel") then
                         VexUI:AddThemeObject(obj, {TextColor3 = "Tab.Text|Text"})
@@ -2722,7 +2712,6 @@ function UI:CreateWindow(Config)
                 end
             end
             Utility:TweenObject(TabBack, {BackgroundTransparency = 0.35}, 0.18)
-            Utility:TweenObject(ActiveRail, {BackgroundTransparency = 0}, 0.18)
             Utility:TweenObject(TabBack.UIStroke, {Transparency = 0.35}, 0.2)
             VexUI:AddThemeObject(TabTitle, {TextColor3 = "Tab.ActiveText|Accent"})
             Utility:TweenObject(TabTitle, {TextTransparency = 0}, 0.2)
