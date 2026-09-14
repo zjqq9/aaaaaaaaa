@@ -3332,7 +3332,7 @@ function UI:CreateWindow(Config)
 
             local value = NormalizeValue(Slider.Value.Default)
             local destroyed, editing = false, false
-            local inputOwner, phase, touchStart, startValue
+            local inputOwner, phase, startValue
             local scrollWasEnabled, movedConnection, endedConnection
             local renderSize = 12
             local function Paint()
@@ -3392,11 +3392,8 @@ function UI:CreateWindow(Config)
                 if not touch and not mouse then return end
 
                 inputOwner = input
-                HoldingSlider = true
-                scrollWasEnabled = RightScroll.ScrollingEnabled
-                RightScroll.ScrollingEnabled = false
-                renderSize = 16
-                Paint()
+                startValue = value
+                if not ClaimDrag() then return end
                 MoveTo(input.Position)
 
                 movedConnection = UserInputService.InputChanged:Connect(function(changed)
