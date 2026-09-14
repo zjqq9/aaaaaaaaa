@@ -3388,40 +3388,30 @@ function UI:CreateWindow(Config)
             hit.InputBegan:Connect(function(input)
                 if inputOwner or HoldingSlider or editing or not CanUse() then return end
                 local touch = input.UserInputType == Enum.UserInputType.Touch
-                if not touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-                inputOwner, phase = input, "pending"
-                touchStart, startValue = input.Position, value
-                if not touch then
-                    if not ClaimDrag() then return end
-                    MoveTo(input.Position)
-                end
-                if not inputOwner then return end
+                local mouse = input.UserInputType == Enum.UserInputType.MouseButton1
+                if not touch and not mouse then return end
+
+                inputOwner = input
+                HoldingSlider = true
+                scrollWasEnabled = RightScroll.ScrollingEnabled
+                RightScroll.ScrollingEnabled = false
+                renderSize = 16
+                Paint()
+                MoveTo(input.Position)
+
                 movedConnection = UserInputService.InputChanged:Connect(function(changed)
                     if not inputOwner then return end
-                    if touch and changed ~= inputOwner then return end
-                    if not touch and changed.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-                    if phase == "pending" then
-                        local delta = changed.Position - touchStart
-                        if math.abs(delta.Y) > 6 and math.abs(delta.Y) >= math.abs(delta.X) then
-                            StopDrag(false) -- A vertical swipe belongs to the page.
-                            return
-                        end
-                        if math.abs(delta.X) <= 6 then return end
-                        if not ClaimDrag() then return end
+                    if touch and changed == inputOwner then
+                        MoveTo(changed.Position)
+                    elseif mouse and changed.UserInputType == Enum.UserInputType.MouseMovement then
+                        MoveTo(changed.Position)
                     end
-                    MoveTo(changed.Position)
                 end)
                 endedConnection = UserInputService.InputEnded:Connect(function(ended)
                     if not inputOwner then return end
-                    if touch and ended ~= inputOwner then return end
-                    if not touch and ended.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-                    if phase == "pending" then
-                        local delta = ended.Position - touchStart
-                        if math.abs(delta.Y) <= 6 and math.abs(delta.X) <= 6 and ClaimDrag() then MoveTo(ended.Position) end
-                    elseif phase == "dragging" then
-                        MoveTo(ended.Position)
+                    if (touch and ended == inputOwner) or (mouse and ended.UserInputType == Enum.UserInputType.MouseButton1) then
+                        StopDrag(true)
                     end
-                    StopDrag(true)
                 end)
             end)
             valueBox.Focused:Connect(function()
@@ -4400,11 +4390,14 @@ function UI:CreateWindow(Config)
     local MobileBtn = VexUI:Create("TextButton", {
         Parent = UIScreen,
         Name = "AeroMobileMinimizeBtn",
-        Size = UDim2.new(0, 70, 0, 32),
-        Position = UDim2.new(0.1, 0, 0.2, 0),
+        Size = UDim2.new(0, 76, 0, 44),
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.new(0, 0, 0.5, 0),
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
         BackgroundTransparency = 0.2,
-        Text = "Aero",
+        Text = "AERO",
+        TextTransparency = 0,
+        ThemeID = {TextColor3 = "Accent"},
         TextColor3 = Color3.fromRGB(255, 255, 255),
         TextSize = 14,
         FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal),
@@ -4489,7 +4482,7 @@ function UI:CreateWindow(Config)
         Main.Visible = false
         
         local isTouch = UserInputService.TouchEnabled
-        MobileBtn.Visible = false -- custom AERO button used instead
+        MobileBtn.Visible = isTouch
         MinzUI.Visible = not isTouch
 
     end    
@@ -4506,7 +4499,7 @@ function UI:CreateWindow(Config)
         end
     end)
 
-    MobileBtn.MouseButton1Click:Connect(function()
+    MobileBtn.Activated:Connect(function()
         if not Window.IslandOpen then
             Window:Open()
         end
