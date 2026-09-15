@@ -399,10 +399,28 @@ function Utility:Element(RightScroll, ElementFrame, sizeY, scope)
     return row, card, inner
 end
 
-local IconsV2 = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"))()
-IconsV2.SetIconsType("lucide")
+local IconsV2
+local function LoadIcons()
+    if IconsV2 then return end
+    local finished, success, result = false, false, nil
+    task.spawn(function()
+        success, result = pcall(function()
+            return loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"))()
+        end)
+        finished = true
+    end)
+    local deadline = os.clock() + 20
+    while not finished and os.clock() < deadline do
+        game:GetService("RunService").Heartbeat:Wait()
+    end
+    if not finished then error("Icon library download timed out", 0) end
+    if not success then error(result, 0) end
+    result.SetIconsType("lucide")
+    IconsV2 = result
+end
 
 local function GetIcon(icon)
+    LoadIcons()
     if typeof(icon) == "string" and icon:find("rbxassetid://") then
         return icon
     end
@@ -650,6 +668,7 @@ function Text(parent, text, textProps, children)
     for token in rawText:gmatch("<([%w_%-]+)>") do
         if token ~= "b" and token ~= "i" and token ~= "u" and token ~= "s"
             and token ~= "br" and token ~= "uppercase" and token ~= "smallcaps" then
+            LoadIcons()
             if IconsV2.Icon(token, "lucide") then hasIcon = true break end
         end
     end
@@ -749,7 +768,89 @@ end
         Utility:TweenObject(Island, {Size = UDim2.new(0, Island.UIListLayout.AbsoluteContentSize.X + 5, 0, 35)}, 0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     end)
 
-function UI:CreateWindow(Config)
+-- Startup UI uses no downloaded images, so it can show before icon loading.
+function VexUI:StartupLoader(config)
+    local theme = self.Themes[config.Theme or "Dark"] or self.Themes.Dark
+    local function make(class, props, parent)
+        local object = Instance.new(class)
+        for key, value in pairs(props) do object[key] = value end
+        object.Parent = parent
+        return object
+    end
+    local screen = make("ScreenGui", {Name = "AERO_Startup", ResetOnSpawn = false,
+        IgnoreGuiInset = true, DisplayOrder = 10000}, UIScreen.Parent)
+    local card = make("CanvasGroup", {AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.fromScale(0.5,0.5),
+        Size = UDim2.new(1,-40,0,174), BackgroundColor3 = theme.Background,
+        BackgroundTransparency = 0.1, BorderSizePixel = 0}, screen)
+    make("UISizeConstraint", {MaxSize = Vector2.new(360,174)}, card)
+    make("UICorner", {CornerRadius = UDim.new(0,16)}, card)
+    make("UIStroke", {Color = theme.Outline, Transparency = 0.35, Thickness = 1}, card)
+    local function label(text, y, height, size, color)
+        return make("TextLabel", {Text = text, Position = UDim2.new(0,22,0,y), Size = UDim2.new(1,-44,0,height),
+            BackgroundTransparency = 1, Font = Enum.Font.GothamMedium, TextSize = size,
+            TextColor3 = color, TextTruncate = Enum.TextTruncate.AtEnd}, card)
+    end
+    label(config.Name or "AERO",14,28,15,theme.Text)
+    make("Frame", {AnchorPoint = Vector2.new(0.5,0), Position = UDim2.new(0.5,0,0,52),
+        Size = UDim2.fromOffset(76,2), BackgroundColor3 = theme.Accent, BorderSizePixel = 0}, card)
+    local status = label("Starting",70,24,12,theme.Text)
+    local detail = label("Preparing your interface",132,18,10,theme.Text)
+    detail.TextTransparency = 0.45
+    local track = make("Frame", {Position = UDim2.new(0,24,0,112), Size = UDim2.new(1,-48,0,4),
+        BackgroundColor3 = theme.Outline, BackgroundTransparency = 0.4, BorderSizePixel = 0}, card)
+    make("UICorner", {CornerRadius = UDim.new(1,0)}, track)
+    local fill = make("Frame", {Size = UDim2.fromScale(0,1), BackgroundColor3 = theme.Accent, BorderSizePixel = 0}, track)
+    make("UICorner", {CornerRadius = UDim.new(1,0)}, fill)
+    local loader = {Screen = screen, Closed = false}
+    local progressTween
+    function loader:Stage(text, fraction, description)
+        if self.Closed then return end
+        status.Text = text; detail.Text = description or ""
+        if progressTween then progressTween:Cancel() end
+        progressTween = TweenService:Create(fill,TweenInfo.new(0.15),{Size = UDim2.fromScale(fraction,1)})
+        progressTween:Play()
+    end
+    function loader:Close()
+        if self.Closed then return end
+        self.Closed = true
+        if progressTween then progressTween:Cancel() end
+        screen:Destroy()
+    end
+    function loader:Finish(detailText)
+        if self.Closed then return end
+        self:Stage("Ready",1,detailText or "Interface ready")
+        task.delay(0.15,function()
+            if self.Closed then return end
+            TweenService:Create(card,TweenInfo.new(0.16),{GroupTransparency = 1}):Play()
+            task.delay(0.16,function() self:Close() end)
+        end)
+    end
+    function loader:Fail(message)
+        self:Stage("Couldn’t finish loading",0,tostring(message))
+        local close = make("TextButton", {Text = "Close", Size = UDim2.fromOffset(54,26),
+            Position = UDim2.new(1,-65,0,14), BackgroundTransparency = 1,
+            TextColor3 = theme.Text, Font = Enum.Font.Gotham, TextSize = 11}, card)
+        close.Activated:Connect(function() self:Close() end)
+    end
+    UIScreen.Destroying:Once(function() loader:Close() end)
+    return loader
+end
+function UI:_BuildWindow(Config, startup)
+    Config = Config or {}
+    local ok, failure = pcall(function()
+        if startup then startup:Stage("Checking game",0.1,"Waiting for Roblox") end
+        if not game:IsLoaded() then game.Loaded:Wait() end
+        local players = game:GetService("Players")
+        while not players.LocalPlayer do players:GetPropertyChangedSignal("LocalPlayer"):Wait() end
+        players.LocalPlayer:WaitForChild("PlayerGui")
+        if startup then startup:Stage("Loading icons",0.3,"Fetching the interface icon library") end
+        LoadIcons()
+    end)
+    if not ok then
+        if startup then startup:Fail("Icon library unavailable. Reload to retry.") end
+        error(failure,0)
+    end
+    if startup then startup:Stage("Building interface",0.5,"Applying theme and layout") end
     local Window = {
         Name = Config.Name or "VexUI",
         Author = Config.Author or nil,
@@ -923,6 +1024,7 @@ function UI:CreateWindow(Config)
         return Window, Edit
     end
 
+    if startup and Window.KeySystem then startup.Screen.Enabled = false end
     if Window.KeySystem and Window.KeySystem.KeyValidator then
         local KeyFrame = VexUI:Create("Frame", {
             Parent = UIScreen,
@@ -1218,6 +1320,7 @@ function UI:CreateWindow(Config)
         coroutine.yield()
     end
 
+    if startup then startup.Screen.Enabled = true; UIScreen.Enabled = false end
     local Main = VexUI:Create("Frame", {
         Name = Window.Name,
         Size = UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset),
@@ -5132,7 +5235,73 @@ function UI:CreateWindow(Config)
 
 
     notificationsReady = true
+    Window.Loading = startup ~= nil
+    if startup then
+        -- Deferred work lets callers register their tabs after CreateWindow returns.
+        task.defer(function()
+            local complete, problem = pcall(function()
+                startup:Stage("Preparing controls",0.65,"Waiting for tab layout")
+                local stable, lastCount, began = 0, -1, os.clock()
+                while stable < 0.2 and os.clock() - began < 5 do
+                    local dt = game:GetService("RunService").Heartbeat:Wait()
+                    if startup.Closed or not UIScreen.Parent then return end
+                    local count = #Window.SearchIndex
+                    stable = count == lastCount and stable + dt or 0
+                    lastCount = count
+                end
+                startup:Stage("Loading UI assets",0.8,"Checking icons and fonts")
+                local assets, seen = {}, {}
+                for _, object in ipairs(UIScreen:GetDescendants()) do
+                    if object:IsA("ImageLabel") or object:IsA("ImageButton") then
+                        if object.Image ~= "" and not seen[object.Image] then
+                            seen[object.Image] = true; table.insert(assets,object.Image)
+                        end
+                    elseif object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
+                        local family = object.FontFace.Family
+                        if family ~= "" and not seen[family] then seen[family] = true; table.insert(assets,family) end
+                    end
+                end
+                local done, failed = #assets == 0, false
+                task.spawn(function()
+                    local loaded = pcall(function()
+                        game:GetService("ContentProvider"):PreloadAsync(assets,function(_,status)
+                            if status ~= Enum.AssetFetchStatus.Success then failed = true end
+                        end)
+                    end)
+                    failed = failed or not loaded
+                    done = true
+                end)
+                local deadline = os.clock() + 8
+                while not done and os.clock() < deadline do
+                    game:GetService("RunService").Heartbeat:Wait()
+                    if startup.Closed or not UIScreen.Parent then return end
+                end
+                if startup.Closed or not UIScreen.Parent then return end
+                UIScreen.Enabled = true
+                Window.Loading = false
+                startup:Finish((failed or not done) and "Some optional assets are still unavailable" or "Interface ready")
+            end)
+            if not complete then
+                Window.Loading = false
+                if UIScreen.Parent then UIScreen.Enabled = true end
+                startup:Fail("Asset checks failed; the interface is available.")
+                warn("[AERO Loader] " .. tostring(problem))
+            end
+        end)
+    end
     return Window
+end
+
+function UI:CreateWindow(Config)
+    Config = Config or {}
+    local startup = Config.Loader ~= false and VexUI:StartupLoader(Config) or nil
+    local ok, result = pcall(self._BuildWindow, self, Config, startup)
+    if not ok then
+        if UIScreen.Parent then UIScreen.Enabled = true end
+        if startup and not startup.Closed then startup:Fail("Setup failed. Reload to retry.") end
+        error(result, 0)
+    end
+    return result
 end
 
 local notificationScreen
