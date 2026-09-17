@@ -1369,6 +1369,10 @@ function UI:_BuildWindow(Config, startup)
             Scale = 1,
         }),
     })
+    local contentFrame = Main:FindFirstChild("Frame")
+    assert(contentFrame, "AERO content frame was not created")
+    local windowAlive = true
+    Main.Destroying:Once(function() windowAlive = false end)
     enableDragging(Main)
 
     Utility:GlassStroke("Outline", 1).Parent = Main
@@ -1476,7 +1480,7 @@ function UI:_BuildWindow(Config, startup)
     end
 
     local TopBarF1 = VexUI:Create("Frame", {
-        Parent = Main.Frame,
+        Parent = contentFrame,
         Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height), --Window.Size.X.Offset - 10 + 133 + 5
         --ClipsDescendants = true,
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -1601,7 +1605,7 @@ function UI:_BuildWindow(Config, startup)
     end
 
     local TopBarF2 = VexUI:Create("Frame", {
-        Parent = Main.Frame,
+        Parent = contentFrame,
         Size = UDim2.new(0, 133, 0, Window.Topbar.Height),
         ClipsDescendants = true,
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -1653,7 +1657,7 @@ function UI:_BuildWindow(Config, startup)
     })
 
     local TopBarF3 = VexUI:Create("Frame", {
-        Parent = Main.Frame,
+        Parent = contentFrame,
         Size = UDim2.new(1, 0, 0, Window.Topbar.Height),
         --ClipsDescendants = true,
         BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -3576,7 +3580,7 @@ function UI:_BuildWindow(Config, startup)
                 UserInputService:GetPropertyChangedSignal("TouchEnabled"):Connect(Layout),
                 UserInputService.WindowFocusReleased:Connect(function() StopDrag(false) end),
                 Main:GetPropertyChangedSignal("Visible"):Connect(function() if not Main.Visible then StopDrag(false) end end),
-                Main.Frame:GetPropertyChangedSignal("Visible"):Connect(function() if not Main.Frame.Visible then StopDrag(false) end end),
+                contentFrame:GetPropertyChangedSignal("Visible"):Connect(function() if not contentFrame.Visible then StopDrag(false) end end),
                 ElementFrame:GetPropertyChangedSignal("Visible"):Connect(function() if not ElementFrame.Visible then StopDrag(false) end end),
             }
             row.Destroying:Once(function()
@@ -4556,6 +4560,7 @@ function UI:_BuildWindow(Config, startup)
     end
 
     function Window:Open()
+        if not windowAlive or not Main.Parent or not contentFrame.Parent then return end
         if not Window.IslandOpen then NotifyAction(Window.Name, "UI reopened") end
         visibilityRevision += 1
         local revision = visibilityRevision
@@ -4569,8 +4574,8 @@ function UI:_BuildWindow(Config, startup)
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         RestoreTransparency(0.2)
         Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 1, UserFrame.Visible and -64 or -16)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
-        Main.Frame.Visible = true
+        Utility:TweenObject(contentFrame, {Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
+        contentFrame.Visible = true
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
         -- RestoreTransparency uses the saved appearance, not the minimized alpha.
 
@@ -4578,15 +4583,18 @@ function UI:_BuildWindow(Config, startup)
             Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.2, 0)}, 0.3)
         end
         task.defer(function()
+            if not windowAlive or revision ~= visibilityRevision then return end
                 Utility:TweenObject(Island, {Size = UDim2.new(0, Island.UIListLayout.AbsoluteContentSize.X + 5, 0, 35)}, 0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
                 task.wait(0.1)
+            if not windowAlive or revision ~= visibilityRevision then return end
                 Utility:TweenObject(MinzUI, {Size = UDim2.new(0, MinzUI.UIListLayout.AbsoluteContentSize.X + 10, 0, 30)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         end)
         task.wait(0.25)
-        if revision ~= visibilityRevision then return end
+        if not windowAlive or revision ~= visibilityRevision then return end
         MinzUI.Visible = false
     end
     function Window:Close()
+        if not windowAlive or not Main.Parent or not contentFrame.Parent then return end
         if Window.IslandOpen then NotifyAction(Window.Name, "UI minimized") end
         visibilityRevision += 1
         local revision = visibilityRevision
@@ -4598,19 +4606,21 @@ function UI:_BuildWindow(Config, startup)
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
-        Main.Frame.Visible = false
+        Utility:TweenObject(contentFrame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
+        contentFrame.Visible = false
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
         Utility:TweenObject(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
         Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         task.defer(function()
+            if not windowAlive or revision ~= visibilityRevision then return end
             Utility:TweenObject(Island, {Size = UDim2.new(0, Island.UIListLayout.AbsoluteContentSize.X + 5, 0, 35)}, 0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             task.wait(0.1)
+            if not windowAlive or revision ~= visibilityRevision then return end
             Utility:TweenObject(MinzUI, {Size = UDim2.new(0, MinzUI.UIListLayout.AbsoluteContentSize.X + 10, 0, 30)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         end)
         task.wait(0.3)
-        if revision ~= visibilityRevision then return end
+        if not windowAlive or revision ~= visibilityRevision then return end
         Main.Visible = false
         
         local isTouch = UserInputService.TouchEnabled
@@ -4646,8 +4656,8 @@ function UI:_BuildWindow(Config, startup)
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
-        Main.Frame.Visible = false
+        Utility:TweenObject(contentFrame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
+        contentFrame.Visible = false
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
         Utility:TweenObject(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         task.wait(0.3)
@@ -4655,13 +4665,15 @@ function UI:_BuildWindow(Config, startup)
     end)
 
     function Window:Destroy()
+        if not windowAlive or not Main.Parent then return end
+        windowAlive = false
         NotifyAction(Window.Name, "UI closed")
         Window.IslandOpen = false
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
-        Main.Frame.Visible = false
+        Utility:TweenObject(contentFrame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
+        contentFrame.Visible = false
         Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
         Utility:TweenObject(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         task.wait(0.3)
@@ -4672,7 +4684,8 @@ function UI:_BuildWindow(Config, startup)
     local capturingReopenKey = false
     local defaultReopenKey = Window.ToggleKey
     Window.ScaleMultiplier = 1
-    UserInputService.InputBegan:Connect(function(input, processed)
+    local reopenConnection = UserInputService.InputBegan:Connect(function(input, processed)
+        if not windowAlive or not Main.Parent then return end
         if capturingReopenKey or UserInputService:GetFocusedTextBox() then return end
         if not processed or input.KeyCode == Enum.KeyCode.RightShift then
             if input.KeyCode == Enum.KeyCode.RightShift or (Window.ToggleKey and input.KeyCode == Window.ToggleKey) then
@@ -4684,6 +4697,8 @@ function UI:_BuildWindow(Config, startup)
             end
         end
     end)
+
+    Main.Destroying:Once(function() reopenConnection:Disconnect() end)
 
     function Window:SetToggleKey(Value)
         if Window.ToggleKey ~= Value then NotifyAction("Reopen key", Value.Name) end
@@ -4767,11 +4782,11 @@ function UI:_BuildWindow(Config, startup)
         FitViewport()
 
         Utility:TweenObject(Main, {Size = UDim2.new(0, sizeX, 0, sizeY)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, sizeX, 0, sizeY - 8)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        Utility:TweenObject(contentFrame, {Size = UDim2.new(0, sizeX, 0, sizeY - 8)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(TopBarF1, {Size = UDim2.new(0, sizeX - 20 - TopBarF2.Size.X.Offset - 187, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         --Main.Size = UDim2.new(0, sizeX, 0, sizeY)
-        --Main.Frame.Size = UDim2.new(0, sizeX, 0, sizeY - 8)
+        --contentFrame.Size = UDim2.new(0, sizeX, 0, sizeY - 8)
         --TopBarF1.Size = UDim2.new(0, sizeX - 20 - TopBarF2.Size.X.Offset - 187, 0, Window.Topbar.Height)
         --TabFrame.Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 13)
 
