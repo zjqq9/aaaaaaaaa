@@ -1448,6 +1448,32 @@ function UI:_BuildWindow(Config, startup)
     end
     local CloseBtn = HeaderButton("TitleClose", "x", -42, function() Window:Destroy() end)
     local MinBtn = HeaderButton("TitleMin", "minus", -76, function() Window:Close() end)
+    do
+        local logoButton = VexUI:Create("ImageButton", {
+            Name = "AEROHistory", Parent = Main, Image = "",
+            Position = UDim2.new(1, -110, 0, 12), Size = UDim2.fromOffset(28, 28),
+            BackgroundTransparency = 1, AutoButtonColor = false, ZIndex = 201,
+            ThemeID = {BackgroundColor3 = "ElementColor"},
+        }, {VexUI:Create("UICorner", {CornerRadius = UDim.new(0, 6)})})
+        VexUI:Create("ImageLabel", {
+            Parent = logoButton, Image = "rbxassetid://129041708314604",
+            AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(22, 22), BackgroundTransparency = 1,
+            ImageColor3 = Color3.new(1, 1, 1), ScaleType = Enum.ScaleType.Fit, ZIndex = 202,
+        })
+        logoButton.MouseEnter:Connect(function()
+            Utility:TweenObject(logoButton, {BackgroundTransparency = 0}, 0.12)
+        end)
+        logoButton.MouseLeave:Connect(function()
+            Utility:TweenObject(logoButton, {BackgroundTransparency = 1}, 0.12)
+        end)
+        local lastClick = -math.huge
+        logoButton.Activated:Connect(function()
+            if os.clock() - lastClick < 1 then return end
+            lastClick = os.clock()
+            UI:Notification({Title = "AERO", Desc = "FOUNDED 2024\nOriginally named NYX.", Duration = 5})
+        end)
+    end
 
     local TopBarF1 = VexUI:Create("Frame", {
         Parent = Main.Frame,
