@@ -768,7 +768,7 @@ end
         Utility:TweenObject(Island, {Size = UDim2.new(0, Island.UIListLayout.AbsoluteContentSize.X + 5, 0, 35)}, 0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     end)
 
--- Startup UI uses no downloaded images, so it can show before icon loading.
+-- The startup panel renders immediately; the brand image loads independently.
 function VexUI:StartupLoader(config)
     local theme = self.Themes[config.Theme or "Dark"] or self.Themes.Dark
     local function make(class, props, parent)
@@ -780,9 +780,9 @@ function VexUI:StartupLoader(config)
     local screen = make("ScreenGui", {Name = "AERO_Startup", ResetOnSpawn = false,
         IgnoreGuiInset = true, DisplayOrder = 10000}, UIScreen.Parent)
     local card = make("CanvasGroup", {AnchorPoint = Vector2.new(0.5,0.5), Position = UDim2.fromScale(0.5,0.5),
-        Size = UDim2.new(1,-40,0,174), BackgroundColor3 = theme.Background,
+        Size = UDim2.new(1,-40,0,244), BackgroundColor3 = theme.Background,
         BackgroundTransparency = 0.1, BorderSizePixel = 0}, screen)
-    make("UISizeConstraint", {MaxSize = Vector2.new(360,174)}, card)
+    make("UISizeConstraint", {MaxSize = Vector2.new(360,244)}, card)
     make("UICorner", {CornerRadius = UDim.new(0,16)}, card)
     make("UIStroke", {Color = theme.Outline, Transparency = 0.35, Thickness = 1}, card)
     local function label(text, y, height, size, color)
@@ -790,18 +790,24 @@ function VexUI:StartupLoader(config)
             BackgroundTransparency = 1, Font = Enum.Font.GothamMedium, TextSize = size,
             TextColor3 = color, TextTruncate = Enum.TextTruncate.AtEnd}, card)
     end
-    label(config.Name or "AERO",14,28,15,theme.Text)
-    make("Frame", {AnchorPoint = Vector2.new(0.5,0), Position = UDim2.new(0.5,0,0,52),
+    local logo = make("ImageLabel", {
+        Name = "AEROLogo", Image = "rbxassetid://129041708314604",
+        AnchorPoint = Vector2.new(0.5,0), Position = UDim2.new(0.5,0,0,18),
+        Size = UDim2.fromOffset(64,64), BackgroundTransparency = 1,
+        ScaleType = Enum.ScaleType.Fit, ImageColor3 = Color3.new(1,1,1),
+    }, card)
+    label(config.Name or "AERO",84,28,15,theme.Text)
+    make("Frame", {AnchorPoint = Vector2.new(0.5,0), Position = UDim2.new(0.5,0,0,122),
         Size = UDim2.fromOffset(76,2), BackgroundColor3 = theme.Accent, BorderSizePixel = 0}, card)
-    local status = label("Starting",70,24,12,theme.Text)
-    local detail = label("Preparing your interface",132,18,10,theme.Text)
+    local status = label("Starting",140,24,12,theme.Text)
+    local detail = label("Preparing your interface",202,18,10,theme.Text)
     detail.TextTransparency = 0.45
-    local track = make("Frame", {Position = UDim2.new(0,24,0,112), Size = UDim2.new(1,-48,0,4),
+    local track = make("Frame", {Position = UDim2.new(0,24,0,182), Size = UDim2.new(1,-48,0,4),
         BackgroundColor3 = theme.Outline, BackgroundTransparency = 0.4, BorderSizePixel = 0}, card)
     make("UICorner", {CornerRadius = UDim.new(1,0)}, track)
     local fill = make("Frame", {Size = UDim2.fromScale(0,1), BackgroundColor3 = theme.Accent, BorderSizePixel = 0}, track)
     make("UICorner", {CornerRadius = UDim.new(1,0)}, fill)
-    local loader = {Screen = screen, Closed = false}
+    local loader = {Screen = screen, Logo = logo, Closed = false}
     local progressTween
     function loader:Stage(text, fraction, description)
         if self.Closed then return end
@@ -5236,6 +5242,17 @@ function UI:_BuildWindow(Config, startup)
 
     notificationsReady = true
     Window.Loading = startup ~= nil
+    local readyCallbacks = {}
+    function Window:WhenReady(callback)
+        if self.Loading then table.insert(readyCallbacks, callback) else task.defer(callback) end
+    end
+    local function finishLoading()
+        Window.Loading = false
+        local callbacks = readyCallbacks
+        readyCallbacks = {}
+        for _, callback in ipairs(callbacks) do task.defer(callback) end
+    end
+    UIScreen.Destroying:Once(function() table.clear(readyCallbacks) end)
     if startup then
         -- Deferred work lets callers register their tabs after CreateWindow returns.
         task.defer(function()
@@ -5251,6 +5268,10 @@ function UI:_BuildWindow(Config, startup)
                 end
                 startup:Stage("Loading UI assets",0.8,"Checking icons and fonts")
                 local assets, seen = {}, {}
+                if startup.Logo then
+                    table.insert(assets, startup.Logo.Image)
+                    seen[startup.Logo.Image] = true
+                end
                 for _, object in ipairs(UIScreen:GetDescendants()) do
                     if object:IsA("ImageLabel") or object:IsA("ImageButton") then
                         if object.Image ~= "" and not seen[object.Image] then
@@ -5278,11 +5299,11 @@ function UI:_BuildWindow(Config, startup)
                 end
                 if startup.Closed or not UIScreen.Parent then return end
                 UIScreen.Enabled = true
-                Window.Loading = false
+                finishLoading()
                 startup:Finish((failed or not done) and "Some optional assets are still unavailable" or "Interface ready")
             end)
             if not complete then
-                Window.Loading = false
+                finishLoading()
                 if UIScreen.Parent then UIScreen.Enabled = true end
                 startup:Fail("Asset checks failed; the interface is available.")
                 warn("[AERO Loader] " .. tostring(problem))
@@ -5307,6 +5328,9 @@ end
 -- Connect a script's existing validated config loader to persistent startup selection.
 function UI:AttachAutoLoad(window, config)
     assert(type(config.Scope) == "string" and config.Scope:match("^[%w_-]+$"), "Invalid auto-load scope")
+    window._AutoLoadScopes = window._AutoLoadScopes or {}
+    if window._AutoLoadScopes[config.Scope] then return end
+    window._AutoLoadScopes[config.Scope] = true
     local filename = "AERO_Autoload_" .. config.Scope .. ".txt"
     local alive = true
     local status = config.Tab:Paragraph({Title = "Auto Load: None"})
@@ -5344,20 +5368,24 @@ function UI:AttachAutoLoad(window, config)
     end) end})
     -- Avoid replacing the script's existing OnDestroy callback.
     UIScreen.Destroying:Once(function() alive = false end)
-    task.defer(function() run(function()
-        local name = readSelection()
-        if not name or not alive then return end
-        report(name)
-        local deadline = os.clock() + 30
-        while window.Loading and alive and os.clock() < deadline do task.wait(0.05) end
-        if not alive then return end
-        assert(not window.Loading, "UI is not ready; load the config manually.")
-        -- Let initial control callbacks finish before restoring saved values.
-        game:GetService("RunService").Heartbeat:Wait()
-        if not alive then return end
-        config.Load(name, false)
-        report(name .. " (loaded)")
-    end) end)
+    local attempted = false
+    local function loadOnce()
+        if attempted or not alive then return end
+        attempted = true
+        run(function()
+            local name = readSelection()
+            if not name or not alive then return end
+            report(name)
+            -- One scheduler turn for initial control callbacks; no recurring readiness checks.
+            task.defer(function() run(function()
+                if not alive then return end
+                config.Load(name, false, true)
+                report(name .. " (loaded)")
+            end) end)
+        end)
+    end
+    if type(window.WhenReady) == "function" then window:WhenReady(loadOnce)
+    else task.defer(loadOnce) end
 end
 local notificationScreen
 local notificationHost
